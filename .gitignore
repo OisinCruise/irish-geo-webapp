@@ -14,3 +14,7 @@ Implementation-Plan.md
 inspected_models.txt
 .playwright-mcp
 .DS_Store
+
+# Data files (too large for Git)
+data/*.csv
+data/*.CSV

@@ -173,11 +173,17 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
     Optimized for loading many points on the map
     Includes essential fields for popup display
     """
-    county_name = serializers.CharField(source='county.name_en', read_only=True)
-    era_name = serializers.CharField(source='era.name_en', read_only=True)
+    county_name = serializers.SerializerMethodField()
+    era_name = serializers.SerializerMethodField()
     site_type_display = serializers.CharField(
         source='get_site_type_display', read_only=True
     )
+
+    def get_county_name(self, obj):
+        return obj.county.name_en if obj.county else None
+
+    def get_era_name(self, obj):
+        return obj.era.name_en if obj.era else None
     
     class Meta:
         model = HistoricalSite
@@ -195,13 +201,28 @@ class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
     Full GeoJSON serializer for site detail view
     Includes all related data, images, and sources
     """
-    # Related object names
-    county_name = serializers.CharField(source='county.name_en', read_only=True)
-    county_name_ga = serializers.CharField(source='county.name_ga', read_only=True)
+    # Related object names (use SerializerMethodField to handle null references)
+    county_name = serializers.SerializerMethodField()
+    county_name_ga = serializers.SerializerMethodField()
     province_name = serializers.SerializerMethodField()
-    era_name = serializers.CharField(source='era.name_en', read_only=True)
-    era_name_ga = serializers.CharField(source='era.name_ga', read_only=True)
-    era_color = serializers.CharField(source='era.color_hex', read_only=True)
+    era_name = serializers.SerializerMethodField()
+    era_name_ga = serializers.SerializerMethodField()
+    era_color = serializers.SerializerMethodField()
+
+    def get_county_name(self, obj):
+        return obj.county.name_en if obj.county else None
+
+    def get_county_name_ga(self, obj):
+        return obj.county.name_ga if obj.county else None
+
+    def get_era_name(self, obj):
+        return obj.era.name_en if obj.era else None
+
+    def get_era_name_ga(self, obj):
+        return obj.era.name_ga if obj.era else None
+
+    def get_era_color(self, obj):
+        return obj.era.color_hex if obj.era else None
 
     # Nested serializers
     images = SiteImageSerializer(many=True, read_only=True)
@@ -269,13 +290,22 @@ class HistoricalSitePopupSerializer(GeoFeatureModelSerializer):
     Medium-weight serializer for map popup display
     Includes essential info without full nested objects
     """
-    county_name = serializers.CharField(source='county.name_en', read_only=True)
-    era_name = serializers.CharField(source='era.name_en', read_only=True)
-    era_color = serializers.CharField(source='era.color_hex', read_only=True)
+    county_name = serializers.SerializerMethodField()
+    era_name = serializers.SerializerMethodField()
+    era_color = serializers.SerializerMethodField()
     site_type_display = serializers.CharField(
         source='get_site_type_display', read_only=True
     )
     primary_image_url = serializers.SerializerMethodField()
+
+    def get_county_name(self, obj):
+        return obj.county.name_en if obj.county else None
+
+    def get_era_name(self, obj):
+        return obj.era.name_en if obj.era else None
+
+    def get_era_color(self, obj):
+        return obj.era.color_hex if obj.era else None
 
     class Meta:
         model = HistoricalSite

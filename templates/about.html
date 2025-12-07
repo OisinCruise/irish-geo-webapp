@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}About{% endblock %}
+
+{% block content %}
+<section class="about-section">
+    <h1 data-en="About Irish Historical Sites GIS" data-ga="Faoi Suíomhanna Stairiúla na hÉireann GIS">
+        About Irish Historical Sites GIS
+    </h1>
+
+    <h2 data-en="Our Mission" data-ga="Ár Misean">Our Mission</h2>
+    <p data-en="The Irish Historical Sites GIS project aims to make Ireland's rich cultural heritage accessible to everyone through modern web mapping technology. By combining accurate geographic data with detailed historical information, we provide an engaging platform for exploring castles, monasteries, ancient monuments, and archaeological sites across the island."
+       data-ga="Tá sé mar aidhm ag tionscadal Suíomhanna Stairiúla na hÉireann GIS oidhreacht chultúrtha shaibhir na hÉireann a chur ar fáil do gach duine trí theicneolaíocht léarscáilithe gréasáin nua-aimseartha. Trí shonraí tíreolaíocha cruinne a chomhcheangal le faisnéis stairiúil mhionsonraithe, cuirimid ardán tarraingteach ar fáil chun caisleáin, mainistreacha, séadchomharthaí ársa, agus láithreáin seandálaíochta a fhiosrú ar fud an oileáin.">
+        The Irish Historical Sites GIS project aims to make Ireland's rich cultural heritage accessible to everyone through modern web mapping technology. By combining accurate geographic data with detailed historical information, we provide an engaging platform for exploring castles, monasteries, ancient monuments, and archaeological sites across the island.
+    </p>
+
+    <h2 data-en="Features" data-ga="Gnéithe">Features</h2>
+    <ul>
+        <li data-en="Interactive map with multiple basemap options (street, satellite, terrain)"
+            data-ga="Léarscáil idirghníomhach le roghanna iolracha buncheirteanna (sráid, satailít, tírdhreach)">
+            Interactive map with multiple basemap options (street, satellite, terrain)
+        </li>
+        <li data-en="Bilingual support in English and Irish (Gaeilge)"
+            data-ga="Tacaíocht dátheangach i mBéarla agus i nGaeilge">
+            Bilingual support in English and Irish (Gaeilge)
+        </li>
+        <li data-en="Dark and light theme modes"
+            data-ga="Móid téama dorcha agus éadrom">
+            Dark and light theme modes
+        </li>
+        <li data-en="Geolocation to find sites near you"
+            data-ga="Geoshuíomh chun láithreáin in aice leat a aimsiú">
+            Geolocation to find sites near you
+        </li>
+        <li data-en="Drawing and measurement tools"
+            data-ga="Uirlisí tarraingthe agus tomhais">
+            Drawing and measurement tools
+        </li>
+        <li data-en="Filtering by site type, county, and historical era"
+            data-ga="Scagadh de réir cineál láithreáin, contae, agus ré stairiúil">
+            Filtering by site type, county, and historical era
+        </li>
+        <li data-en="Coordinate display and search"
+            data-ga="Taispeáint agus cuardach comhordanáidí">
+            Coordinate display and search
+        </li>
+        <li data-en="Responsive design for all devices"
+            data-ga="Dearadh freagrach do gach gléas">
+            Responsive design for all devices
+        </li>
+    </ul>
+
+    <h2 data-en="Technology Stack" data-ga="Cruach Teicneolaíochta">Technology Stack</h2>
+    <div class="tech-stack">
+        <div class="tech-item">
+            <strong>Backend</strong>
+            <span>Django 4.2 LTS</span>
+        </div>
+        <div class="tech-item">
+            <strong>Database</strong>
+            <span>PostgreSQL + PostGIS</span>
+        </div>
+        <div class="tech-item">
+            <strong>API</strong>
+            <span>Django REST Framework</span>
+        </div>
+        <div class="tech-item">
+            <strong>Mapping</strong>
+            <span>Leaflet.js + OpenStreetMap</span>
+        </div>
+        <div class="tech-item">
+            <strong>Spatial Data</strong>
+            <span>GeoJSON / WGS84</span>
+        </div>
+        <div class="tech-item">
+            <strong>Frontend</strong>
+            <span>HTML5 / CSS3 / ES6</span>
+        </div>
+    </div>
+
+    <h2 data-en="Data Sources" data-ga="Foinsí Sonraí">Data Sources</h2>
+    <p data-en="Our historical site data is compiled from various authoritative sources including the National Monuments Service, Ordnance Survey Ireland, and academic research. County and province boundaries are derived from official OSi datasets."
+       data-ga="Tiomsaítear ár sonraí láithreán stairiúil ó fhoinsí éagsúla údarásacha lena n-áirítear Seirbhís na Séadchomharthaí Náisiúnta, Suirbhéireacht Ordanáis Éireann, agus taighde acadúil. Díorthaítear teorainneacha contae agus cúige ó thacair sonraí oifigiúla OSi.">
+        Our historical site data is compiled from various authoritative sources including the National Monuments Service, Ordnance Survey Ireland, and academic research. County and province boundaries are derived from official OSi datasets.
+    </p>
+
+    <h2 data-en="API Access" data-ga="Rochtain API">API Access</h2>
+    <p data-en="Developers can access our data through a RESTful API that returns GeoJSON-formatted responses. The API supports filtering, pagination, and spatial queries."
+       data-ga="Is féidir le forbróirí rochtain a fháil ar ár sonraí trí API RESTful a thugann freagraí i bhformáid GeoJSON ar ais. Tacaíonn an API le scagadh, leathanú, agus fiosrúcháin spásúla.">
+        Developers can access our data through a RESTful API that returns GeoJSON-formatted responses. The API supports filtering, pagination, and spatial queries.
+    </p>
+    <p>
+        <a href="/api/docs/" class="btn btn-primary" target="_blank"
+           data-en="View API Documentation" data-ga="Féach ar Cháipéisíocht API">
+            View API Documentation
+        </a>
+    </p>
+
+    <h2 data-en="Contact" data-ga="Teagmháil">Contact</h2>
+    <p data-en="This project was developed as part of the Advanced Web Mapping module at TU Dublin. For questions or feedback, please contact the development team."
+       data-ga="Forbraíodh an tionscadal seo mar chuid den mhodúl Ardléarscáiliú Gréasáin ag OT Bhaile Átha Cliath. Má tá ceisteanna nó aiseolas agat, déan teagmháil leis an bhfoireann forbartha le do thoil.">
+        This project was developed as part of the Advanced Web Mapping module at TU Dublin. For questions or feedback, please contact the development team.
+    </p>
+</section>
+{% endblock %}

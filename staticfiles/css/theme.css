@@ -1,0 +1,407 @@
+/**
+ * Irish Historical Sites GIS - Theme CSS
+ * =======================================
+ * Dark/Light theme support with Irish heritage color palette
+ * Colors: Irish green (#1a5f4a), Celtic gold (#ff8c00)
+ */
+
+/* ==============================================================================
+   CSS CUSTOM PROPERTIES (Theme Variables)
+   ============================================================================== */
+
+:root {
+    /* Light Theme (Default) */
+    --color-primary: #1a5f4a;
+    --color-primary-dark: #145040;
+    --color-primary-light: #2d8659;
+    --color-accent: #ff8c00;
+    --color-accent-dark: #cc7000;
+    --color-accent-light: #ffa333;
+
+    /* Backgrounds */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f8f9fa;
+    --bg-tertiary: #e9ecef;
+    --bg-card: #ffffff;
+
+    /* Text */
+    --text-primary: #1a1a1a;
+    --text-secondary: #4a4a4a;
+    --text-muted: #6c757d;
+    --text-inverse: #ffffff;
+
+    /* Borders */
+    --border-color: #dee2e6;
+    --border-light: #e9ecef;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.1);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1);
+
+    /* Map specific */
+    --map-popup-bg: #ffffff;
+    --map-popup-text: #1a1a1a;
+    --map-control-bg: #ffffff;
+
+    /* Transitions */
+    --transition-fast: 150ms ease;
+    --transition-normal: 250ms ease;
+    --transition-slow: 350ms ease;
+
+    /* Spacing */
+    --spacing-xs: 0.25rem;
+    --spacing-sm: 0.5rem;
+    --spacing-md: 1rem;
+    --spacing-lg: 1.5rem;
+    --spacing-xl: 2rem;
+
+    /* Border Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+    --radius-full: 9999px;
+
+    /* Z-index layers */
+    --z-dropdown: 100;
+    --z-sticky: 200;
+    --z-fixed: 300;
+    --z-modal-backdrop: 400;
+    --z-modal: 500;
+    --z-tooltip: 600;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --color-primary: #2d8659;
+    --color-primary-dark: #1a5f4a;
+    --color-primary-light: #3d9d6d;
+
+    /* Backgrounds */
+    --bg-primary: #121212;
+    --bg-secondary: #1e1e1e;
+    --bg-tertiary: #2d2d2d;
+    --bg-card: #1e1e1e;
+
+    /* Text */
+    --text-primary: #f0f0f0;
+    --text-secondary: #b0b0b0;
+    --text-muted: #808080;
+    --text-inverse: #1a1a1a;
+
+    /* Borders */
+    --border-color: #3d3d3d;
+    --border-light: #2d2d2d;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.4);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.5);
+
+    /* Map specific */
+    --map-popup-bg: #1e1e1e;
+    --map-popup-text: #f0f0f0;
+    --map-control-bg: #2d2d2d;
+}
+
+
+/* ==============================================================================
+   BASE STYLES
+   ============================================================================== */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+html {
+    font-size: 16px;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background-color: var(--bg-primary);
+    transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+a {
+    color: var(--color-primary);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+a:hover {
+    color: var(--color-accent);
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+
+/* ==============================================================================
+   NAVIGATION
+   ============================================================================== */
+
+.navbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    box-shadow: var(--shadow-md);
+    position: sticky;
+    top: 0;
+    z-index: var(--z-sticky);
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-logo {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    color: var(--text-inverse);
+    font-weight: 600;
+    font-size: 1.25rem;
+    text-decoration: none;
+}
+
+.navbar-logo:hover {
+    color: var(--color-accent);
+}
+
+.logo-icon {
+    font-size: 1.5rem;
+}
+
+.navbar-menu {
+    display: flex;
+    gap: var(--spacing-md);
+}
+
+.nav-link {
+    color: rgba(255,255,255,0.9);
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+    font-weight: 500;
+}
+
+.nav-link:hover {
+    color: #ffffff;
+    background-color: rgba(255,255,255,0.1);
+}
+
+.nav-link.active {
+    color: var(--color-accent);
+    background-color: rgba(255,255,255,0.15);
+}
+
+.navbar-controls {
+    display: flex;
+    gap: var(--spacing-sm);
+}
+
+
+/* ==============================================================================
+   BUTTONS
+   ============================================================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-sm) var(--spacing-md);
+    font-size: 0.9rem;
+    font-weight: 500;
+    border: 2px solid transparent;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-decoration: none;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: var(--text-inverse);
+    border-color: var(--color-primary);
+}
+
+.btn-primary:hover {
+    background-color: var(--color-primary-dark);
+    border-color: var(--color-primary-dark);
+}
+
+.btn-accent {
+    background-color: var(--color-accent);
+    color: var(--text-inverse);
+    border-color: var(--color-accent);
+}
+
+.btn-accent:hover {
+    background-color: var(--color-accent-dark);
+    border-color: var(--color-accent-dark);
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: var(--color-accent);
+    border-color: var(--color-accent);
+}
+
+.btn-outline:hover {
+    background-color: var(--color-accent);
+    color: var(--text-inverse);
+}
+
+.btn-icon {
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    background-color: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.2);
+    color: var(--text-inverse);
+    border-radius: var(--radius-full);
+}
+
+.btn-icon:hover {
+    background-color: rgba(255,255,255,0.2);
+    border-color: var(--color-accent);
+}
+
+.lang-indicator {
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.theme-icon {
+    font-size: 1.1rem;
+}
+
+
+/* ==============================================================================
+   MAIN CONTENT
+   ============================================================================== */
+
+.main-content {
+    min-height: calc(100vh - 60px - 60px);
+}
+
+
+/* ==============================================================================
+   FOOTER
+   ============================================================================== */
+
+.footer {
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+    padding: var(--spacing-lg);
+    text-align: center;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer p {
+    margin: var(--spacing-xs) 0;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.footer-links a {
+    color: var(--color-primary);
+    margin: 0 var(--spacing-sm);
+}
+
+.footer-links a:hover {
+    color: var(--color-accent);
+}
+
+
+/* ==============================================================================
+   CARDS
+   ============================================================================== */
+
+.card {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+    transition: box-shadow var(--transition-fast);
+}
+
+.card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.card-header {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-body {
+    padding: var(--spacing-lg);
+}
+
+.card-footer {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background-color: var(--bg-secondary);
+    border-top: 1px solid var(--border-color);
+}
+
+
+/* ==============================================================================
+   RESPONSIVE DESIGN
+   ============================================================================== */
+
+@media (max-width: 768px) {
+    .navbar {
+        flex-wrap: wrap;
+        padding: var(--spacing-sm);
+    }
+
+    .navbar-menu {
+        order: 3;
+        width: 100%;
+        justify-content: center;
+        padding-top: var(--spacing-sm);
+        border-top: 1px solid rgba(255,255,255,0.1);
+        margin-top: var(--spacing-sm);
+    }
+
+    .nav-link {
+        padding: var(--spacing-xs) var(--spacing-sm);
+        font-size: 0.9rem;
+    }
+
+    .logo-text {
+        display: none;
+    }
+}
+
+@media (max-width: 480px) {
+    .navbar-menu {
+        gap: var(--spacing-xs);
+    }
+
+    .nav-link {
+        padding: var(--spacing-xs);
+        font-size: 0.8rem;
+    }
+}

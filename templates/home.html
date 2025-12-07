@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero">
+    <h1 data-en="Discover Ireland's Historical Heritage" data-ga="Fionnachtain Oidhreacht Stairiúil na hÉireann">
+        Discover Ireland's Historical Heritage
+    </h1>
+    <p data-en="Explore thousands of castles, monasteries, ancient monuments, and archaeological sites across Ireland through our interactive map."
+       data-ga="Taiscéal na mílte caisleán, mainistreacha, séadchomharthaí ársa, agus láithreáin seandálaíochta ar fud na hÉireann trínár léarscáil idirghníomhach.">
+        Explore thousands of castles, monasteries, ancient monuments, and archaeological sites across Ireland through our interactive map.
+    </p>
+    <div class="hero-actions">
+        <a href="{% url 'explore' %}" class="btn btn-accent"
+           data-en="Start Exploring" data-ga="Tosaigh ag Taiscéaladh">
+            Start Exploring
+        </a>
+        <a href="{% url 'about' %}" class="btn btn-outline"
+           data-en="Learn More" data-ga="Foghlaim Níos Mó">
+            Learn More
+        </a>
+    </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+    <div class="features-grid">
+        <div class="card feature-card">
+            <div class="feature-icon">🗺️</div>
+            <h3 data-en="Interactive Map" data-ga="Léarscáil Idirghníomhach">Interactive Map</h3>
+            <p data-en="Navigate Ireland's historical landscape with our fully interactive Leaflet-powered map featuring satellite imagery, terrain views, and detailed street maps."
+               data-ga="Nascleanúint ar thírdhreach stairiúil na hÉireann lenár léarscáil lán-idirghníomhach le híomhánna satailíte, radhairc tírdhreacha, agus léarscáileanna sráide mionsonraithe.">
+                Navigate Ireland's historical landscape with our fully interactive Leaflet-powered map featuring satellite imagery, terrain views, and detailed street maps.
+            </p>
+        </div>
+
+        <div class="card feature-card">
+            <div class="feature-icon">🏰</div>
+            <h3 data-en="Rich Historical Data" data-ga="Sonraí Stairiúla Saibhir">Rich Historical Data</h3>
+            <p data-en="Access detailed information about castles, monasteries, ringforts, burial sites, and more—with bilingual support in English and Irish."
+               data-ga="Rochtain ar fhaisnéis mhionsonraithe faoi chaisleáin, mainistreacha, ráthanna, láithreáin adhlactha, agus níos mó—le tacaíocht dátheangach i mBéarla agus i nGaeilge.">
+                Access detailed information about castles, monasteries, ringforts, burial sites, and more—with bilingual support in English and Irish.
+            </p>
+        </div>
+
+        <div class="card feature-card">
+            <div class="feature-icon">📍</div>
+            <h3 data-en="Location Services" data-ga="Seirbhísí Suímh">Location Services</h3>
+            <p data-en="Find historical sites near you with geolocation, search by coordinates, and measure distances between points of interest."
+               data-ga="Aimsigh láithreáin stairiúla in aice leat le geoshuíomh, cuardaigh de réir comhordanáidí, agus tomhais faid idir pointí spéise.">
+                Find historical sites near you with geolocation, search by coordinates, and measure distances between points of interest.
+            </p>
+        </div>
+
+        <div class="card feature-card">
+            <div class="feature-icon">🎨</div>
+            <h3 data-en="Dark & Light Themes" data-ga="Téamaí Dorcha & Éadrom">Dark & Light Themes</h3>
+            <p data-en="Switch between dark and light themes for comfortable viewing day or night, with your preference saved automatically."
+               data-ga="Athraigh idir téamaí dorcha agus éadroma le haghaidh amharc compordach lá nó oíche, le do rogha sábháilte go huathoibríoch.">
+                Switch between dark and light themes for comfortable viewing day or night, with your preference saved automatically.
+            </p>
+        </div>
+
+        <div class="card feature-card">
+            <div class="feature-icon">⏱️</div>
+            <h3 data-en="Timeline Filtering" data-ga="Scagadh Amlíne">Timeline Filtering</h3>
+            <p data-en="Filter sites by historical era—from prehistoric times through medieval period to modern Ireland."
+               data-ga="Scag láithreáin de réir ré stairiúil—ón ré réamhstairiúil tríd an tréimhse mheánaoiseach go hÉirinn nua-aimseartha.">
+                Filter sites by historical era—from prehistoric times through medieval period to modern Ireland.
+            </p>
+        </div>
+
+        <div class="card feature-card">
+            <div class="feature-icon">📱</div>
+            <h3 data-en="Works Everywhere" data-ga="Oibríonn Áit ar Bith">Works Everywhere</h3>
+            <p data-en="Fully responsive design works on desktop, tablet, and mobile devices. Take Ireland's history with you wherever you go."
+               data-ga="Oibríonn dearadh lán-fhreagrach ar dheasc, táibléad, agus gléasanna soghluaiste. Tóg stair na hÉireann leat áit ar bith a théann tú.">
+                Fully responsive design works on desktop, tablet, and mobile devices. Take Ireland's history with you wherever you go.
+            </p>
+        </div>
+    </div>
+</section>
+
+<!-- Quick Stats Section -->
+<section class="features-section" style="background-color: var(--bg-secondary);">
+    <h2 style="text-align: center; color: var(--color-primary); margin-bottom: var(--spacing-lg);"
+        data-en="Explore Ireland's Heritage" data-ga="Taiscéal Oidhreacht na hÉireann">
+        Explore Ireland's Heritage
+    </h2>
+    <div class="features-grid">
+        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
+            <div style="font-size: 2.5rem; color: var(--color-primary); font-weight: bold;">26</div>
+            <p data-en="Counties Covered" data-ga="Contaetha Clúdaithe">Counties Covered</p>
+        </div>
+        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
+            <div style="font-size: 2.5rem; color: var(--color-accent); font-weight: bold;">4</div>
+            <p data-en="Historic Provinces" data-ga="Cúigí Stairiúla">Historic Provinces</p>
+        </div>
+        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
+            <div style="font-size: 2.5rem; color: var(--color-primary); font-weight: bold;">13+</div>
+            <p data-en="Site Categories" data-ga="Catagóirí Láithreán">Site Categories</p>
+        </div>
+        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
+            <div style="font-size: 2.5rem; color: var(--color-accent); font-weight: bold;">2</div>
+            <p data-en="Languages Supported" data-ga="Teangacha Tacaithe">Languages Supported</p>
+        </div>
+    </div>
+</section>
+
+<!-- Call to Action -->
+<section style="text-align: center; padding: var(--spacing-xl);">
+    <h2 data-en="Ready to Explore?" data-ga="Réidh le Taiscéaladh?">Ready to Explore?</h2>
+    <p style="max-width: 600px; margin: var(--spacing-md) auto var(--spacing-lg);"
+       data-en="Start your journey through Ireland's fascinating history today."
+       data-ga="Tosaigh do thuras trí stair shuimiúil na hÉireann inniu.">
+        Start your journey through Ireland's fascinating history today.
+    </p>
+    <a href="{% url 'explore' %}" class="btn btn-primary" style="font-size: 1.1rem; padding: var(--spacing-md) var(--spacing-xl);"
+       data-en="Open the Map" data-ga="Oscail an Léarscáil">
+        Open the Map
+    </a>
+</section>
+{% endblock %}

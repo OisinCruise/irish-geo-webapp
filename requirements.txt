@@ -1,30 +1,43 @@
+# ==============================================================================
+# IRISH HISTORICAL SITES GIS - PYTHON DEPENDENCIES
+# Django 4.2.0 LTS with GeoDjango/PostGIS support
+# ==============================================================================
+
 # Core Django
 Django==4.2.0
-djangorestframework==3.14.0
+django-environ==0.10.0
+python-dotenv==1.0.0
 
-# Database & GIS
+# Database
 psycopg2-binary==2.9.9
 
-# GIS Extensions
+# Django REST Framework
+djangorestframework==3.14.0
 djangorestframework-gis==1.0
-django-leaflet==0.30.0
+django-filter==23.2
+drf-spectacular==0.26.2
 
-# API & CORS
-django-filter==23.5
-django-cors-headers==4.3.1
-drf-spectacular==0.27.0
+# CORS and Security
+django-cors-headers==4.0.0
 
-# Authentication
-djangorestframework-simplejwt==5.3.1
+# Geospatial libraries
+pyproj==3.7.2
+shapely==2.0.6
 
-# Utilities
-python-dotenv==1.0.0
-Pillow==10.1.0
-requests==2.31.0
+# Data processing
+pandas==2.3.3
+numpy==2.3.5
 
-# Production Server
-gunicorn==21.2.0
-# uWSGI==2.0.23  # Optional - comment out for macOS development
+# Date/Time
+python-dateutil==2.9.0
 
-# Additional
-whitenoise==6.6.0
+# Production server
+uwsgi==2.0.26
+gunicorn==23.0.0
+
+# Monitoring (optional)
+# sentry-sdk==1.40.0
+
+# Development tools (optional)
+# django-debug-toolbar==4.2.0
+# ipython==8.18.0

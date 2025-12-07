@@ -1,0 +1,112 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Explore Ireland's rich historical heritage through an interactive map featuring castles, monasteries, ancient monuments and archaeological sites.">
+    <meta name="keywords" content="Ireland, historical sites, castles, monasteries, heritage, archaeology, interactive map">
+    <meta name="author" content="Irish Historical Sites GIS">
+
+    <title>{% block title %}Irish Historical Sites{% endblock %} | Suíomhanna Stairiúla na hÉireann</title>
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{% static 'manifest.json' %}">
+    <meta name="theme-color" content="#1a5f4a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+    <!-- Leaflet Draw CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css">
+
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
+    <!-- Custom Theme CSS -->
+    <link rel="stylesheet" href="{% static 'css/theme.css' %}">
+    <link rel="stylesheet" href="{% static 'css/components.css' %}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+        <div class="navbar-brand">
+            <a href="{% url 'home' %}" class="navbar-logo">
+                <span class="logo-icon">&#9883;</span>
+                <span class="logo-text" data-en="Irish Historical Sites" data-ga="Suíomhanna Stairiúla">
+                    Irish Historical Sites
+                </span>
+            </a>
+        </div>
+
+        <div class="navbar-menu">
+            <a href="{% url 'home' %}" class="nav-link {% if request.resolver_match.url_name == 'home' %}active{% endif %}"
+               data-en="Home" data-ga="Baile">Home</a>
+            <a href="{% url 'explore' %}" class="nav-link {% if request.resolver_match.url_name == 'explore' %}active{% endif %}"
+               data-en="Explore Map" data-ga="Léarscáil">Explore Map</a>
+            <a href="{% url 'about' %}" class="nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}"
+               data-en="About" data-ga="Eolas">About</a>
+        </div>
+
+        <div class="navbar-controls">
+            <!-- Language Toggle -->
+            <button id="langToggle" class="btn btn-icon"
+                    title="Toggle Irish/English" aria-label="Toggle language">
+                <span class="lang-indicator">GA</span>
+            </button>
+
+            <!-- Theme Toggle -->
+            <button id="themeToggle" class="btn btn-icon"
+                    title="Toggle dark mode" aria-label="Toggle theme">
+                <span class="theme-icon">&#9790;</span>
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    {% block footer %}
+    <footer class="footer">
+        <div class="footer-content">
+            <p data-en="Irish Historical Sites GIS - Preserving Ireland's Heritage"
+               data-ga="Suíomhanna Stairiúla na hÉireann - Ag Caomhnú Oidhreacht na hÉireann">
+                Irish Historical Sites GIS - Preserving Ireland's Heritage
+            </p>
+            <p class="footer-links">
+                <a href="/api/docs/" target="_blank">API Documentation</a> |
+                <a href="/admin/" target="_blank">Admin</a>
+            </p>
+        </div>
+    </footer>
+    {% endblock %}
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+            integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- Leaflet Draw JS -->
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+
+    <!-- Leaflet MarkerCluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+    <!-- Core Application JS -->
+    <script src="{% static 'js/theme.js' %}?v=2"></script>
+    <script src="{% static 'js/i18n.js' %}?v=2"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

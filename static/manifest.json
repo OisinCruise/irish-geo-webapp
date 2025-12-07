@@ -1,0 +1,44 @@
+{
+    "name": "Irish Historical Sites GIS",
+    "short_name": "Irish History",
+    "description": "Explore Ireland's rich historical heritage through an interactive map featuring castles, monasteries, ancient monuments and archaeological sites.",
+    "start_url": "/explore/",
+    "display": "standalone",
+    "orientation": "any",
+    "background_color": "#1a5f4a",
+    "theme_color": "#1a5f4a",
+    "scope": "/",
+    "lang": "en",
+    "categories": ["education", "travel", "reference"],
+    "icons": [
+        {
+            "src": "/static/images/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/static/images/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "screenshots": [],
+    "shortcuts": [
+        {
+            "name": "Explore Map",
+            "short_name": "Map",
+            "description": "Open the interactive historical sites map",
+            "url": "/explore/",
+            "icons": []
+        },
+        {
+            "name": "About",
+            "short_name": "About",
+            "description": "Learn about the project",
+            "url": "/about/",
+            "icons": []
+        }
+    ]
+}

@@ -199,9 +199,10 @@
         // Create marker cluster group
         markersCluster = L.markerClusterGroup({
             showCoverageOnHover: false,
-            maxClusterRadius: 50,
+            maxClusterRadius: 40, // Reduced from 50 to make clustering less aggressive
             spiderfyOnMaxZoom: true,
-            disableClusteringAtZoom: 15,
+            disableClusteringAtZoom: 12, // Lower zoom level to show individual markers sooner
+            zoomToBoundsOnClick: true,
             iconCreateFunction: function(cluster) {
                 const count = cluster.getChildCount();
                 let size = 'small';
@@ -357,28 +358,61 @@
             let url = CONFIG.api.sites;
             const params = new URLSearchParams();
 
+            // Request a large page size to get all sites (or at least many)
+            params.append('page_size', '2000');
+
             // Apply filters
             if (currentFilters.era) params.append('era', currentFilters.era);
             if (currentFilters.county) params.append('county', currentFilters.county);
             if (currentFilters.siteType) params.append('site_type', currentFilters.siteType);
             if (currentFilters.nationalMonument) {
-                params.append('is_national_monument', 'true');
+                params.append('national_monument', 'true');
             }
 
             const queryString = params.toString();
             if (queryString) url += '?' + queryString;
 
+            console.log('Loading sites from:', url);
             const response = await fetch(url);
-            if (!response.ok) throw new Error('Failed to load sites');
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('API Error:', response.status, errorText);
+                throw new Error(`Failed to load sites: ${response.status}`);
+            }
 
             const data = await response.json();
-            displaySites(data);
+            console.log('API Response received:', {
+                hasResults: !!data.results,
+                hasFeatures: !!data.features,
+                type: data.type,
+                count: data.count,
+                keys: Object.keys(data)
+            });
+            
+            // Handle paginated response (DRF wraps GeoJSON in pagination)
+            let geojsonData;
+            if (data.results && data.results.type === 'FeatureCollection') {
+                // Paginated response: data.results contains the GeoJSON
+                geojsonData = data.results;
+                console.log('Using paginated response, features count:', geojsonData.features?.length);
+            } else if (data.type === 'FeatureCollection') {
+                // Direct GeoJSON response
+                geojsonData = data;
+                console.log('Using direct GeoJSON response, features count:', geojsonData.features?.length);
+            } else {
+                console.error('Unexpected API response format:', data);
+                throw new Error('Unexpected response format from API');
+            }
 
-            const count = data.features ? data.features.length : 0;
+            displaySites(geojsonData);
+
+            const count = geojsonData.features ? geojsonData.features.length : 0;
             updateSiteCount(count);
 
             if (count > 0) {
                 showToast(`Loaded ${count.toLocaleString()} historical sites`, 'success');
+            } else {
+                console.warn('No sites found in response');
             }
         } catch (error) {
             console.error('Error loading sites:', error);
@@ -392,14 +426,41 @@
      * Display sites on the map
      */
     function displaySites(geojsonData) {
+        console.log('displaySites called with:', {
+            hasFeatures: !!geojsonData.features,
+            featureCount: geojsonData.features?.length,
+            type: geojsonData.type
+        });
+
         // Clear existing markers
-        markersCluster.clearLayers();
-        sitesLayer.clearLayers();
+        if (markersCluster) {
+            markersCluster.clearLayers();
+        }
+        if (sitesLayer) {
+            sitesLayer.clearLayers();
+        }
 
         // Add new data
-        if (geojsonData.features && geojsonData.features.length > 0) {
+        if (geojsonData && geojsonData.features && geojsonData.features.length > 0) {
+            console.log(`Adding ${geojsonData.features.length} features to map`);
+            
+            // Add data to GeoJSON layer (this creates individual markers)
             sitesLayer.addData(geojsonData);
-            markersCluster.addLayer(sitesLayer);
+            
+            // Collect all layers created by addData and add them to cluster
+            const layers = [];
+            sitesLayer.eachLayer(function(layer) {
+                layers.push(layer);
+            });
+            
+            if (layers.length > 0) {
+                markersCluster.addLayers(layers);
+                console.log(`Successfully added ${layers.length} markers to cluster group`);
+            } else {
+                console.warn('No layers created from GeoJSON data - check pointToLayer function');
+            }
+        } else {
+            console.warn('No features to display in GeoJSON data', geojsonData);
         }
     }
 
@@ -448,6 +509,17 @@
         const color = CONFIG.siteTypeColors[siteType] || CONFIG.defaultColor;
         const isNationalMonument = props.is_national_monument || props.national_monument;
 
+        // Verify coordinates are valid
+        if (!latlng || isNaN(latlng.lat) || isNaN(latlng.lng)) {
+            console.warn('Invalid coordinates for feature:', props.id || props.name_en, latlng);
+            return null;
+        }
+
+        // Verify coordinates are within Ireland bounds
+        if (latlng.lat < 51.0 || latlng.lat > 56.0 || latlng.lng < -11.5 || latlng.lng > -4.5) {
+            console.warn('Coordinates outside Ireland bounds for feature:', props.id || props.name_en, latlng);
+        }
+
         const markerOptions = {
             radius: isNationalMonument ? 10 : 7,
             fillColor: color,
@@ -466,6 +538,18 @@
     function onEachSiteFeature(feature, layer) {
         const props = feature.properties;
         const lang = getCurrentLang();
+
+        // Extract coordinates from geometry if available
+        if (feature.geometry && feature.geometry.coordinates) {
+            props.geometry = feature.geometry;
+            // Also set lat/lon from geometry for consistency
+            if (!props.latitude && feature.geometry.coordinates[1]) {
+                props.latitude = feature.geometry.coordinates[1];
+            }
+            if (!props.longitude && feature.geometry.coordinates[0]) {
+                props.longitude = feature.geometry.coordinates[0];
+            }
+        }
 
         // Create popup content
         const name = lang === 'ga' && props.name_ga ? props.name_ga : (props.name_en || props.name);
@@ -497,14 +581,25 @@
         const siteTypeDisplay = props.site_type_display || formatSiteType(props.site_type);
         const isNationalMonument = props.is_national_monument || props.national_monument;
 
+        // Get coordinates from geometry if available, otherwise from properties
+        let lat = null, lon = null;
+        if (props.geometry && props.geometry.coordinates) {
+            lon = props.geometry.coordinates[0];
+            lat = props.geometry.coordinates[1];
+        } else if (props.latitude && props.longitude) {
+            lat = parseFloat(props.latitude);
+            lon = parseFloat(props.longitude);
+        }
+
         let html = `
             <div class="site-popup">
                 <div class="popup-header">
                     <div class="popup-titles">
                         <h3 class="popup-title">${escapeHtml(name)}</h3>
                         ${props.name_ga && lang === 'en' ? `<p class="popup-subtitle">${escapeHtml(props.name_ga)}</p>` : ''}
+                        ${props.id ? `<p class="popup-id">Site ID: ${props.id}</p>` : ''}
                     </div>
-                    <span class="popup-type-badge">${escapeHtml(siteTypeDisplay)}</span>
+                    <span class="popup-type-badge" title="${escapeHtml(siteTypeDisplay)}">${escapeHtml(siteTypeDisplay)}</span>
                 </div>
         `;
 
@@ -525,18 +620,23 @@
             html += `<span class="popup-meta-item"><span class="meta-icon">🏛️</span>${escapeHtml(props.era_name)}</span>`;
         }
 
+        if (props.significance_level) {
+            html += `<span class="popup-meta-item"><span class="meta-icon">⭐</span>Significance: ${escapeHtml(String(props.significance_level))}</span>`;
+        }
+
         if (isNationalMonument) {
             html += `<span class="popup-meta-item national-monument"><span class="meta-icon">🏆</span>National Monument</span>`;
         }
 
         html += `</div>`;
 
-        // Coordinates
-        if (props.latitude && props.longitude) {
+        // Coordinates with better formatting
+        if (lat !== null && lon !== null) {
             html += `
                 <div class="popup-coords">
                     <span class="meta-icon">🧭</span>
-                    ${parseFloat(props.latitude).toFixed(5)}, ${parseFloat(props.longitude).toFixed(5)}
+                    <span class="coord-label">Coordinates:</span>
+                    <span class="coord-value">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>
                 </div>
             `;
         }

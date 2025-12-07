@@ -69,10 +69,11 @@
     padding: 8px 12px !important;
     background-color: var(--bg-card) !important;
     color: var(--text-primary) !important;
-    z-index: 1001 !important;
+    z-index: 1002 !important;
     position: relative;
     max-width: 280px;
     min-width: 200px;
+    box-shadow: var(--shadow-lg) !important;
 }
 
 .leaflet-control-layers-selector {
@@ -112,23 +113,61 @@
 
 .map-toolbar {
     position: absolute;
-    top: 10px;
-    right: 60px;
+    top: 75px;
+    left: 10px;
     z-index: 1000;
+    background-color: var(--bg-card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    padding: 10px;
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
+    width: fit-content;
 }
 
-/* Ensure layer control doesn't overlap with toolbar */
+/* Ensure layer control has proper z-index and positioning */
 .leaflet-top.leaflet-right {
-    z-index: 1001;
+    z-index: 1002;
 }
 
 .leaflet-control-layers {
-    z-index: 1001 !important;
+    z-index: 1002 !important;
 }
 
+.leaflet-control-layers-expanded {
+    z-index: 1002 !important;
+    position: relative;
+}
+
+.toolbar-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.toolbar-section:not(:last-child) {
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.toolbar-section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.toolbar-buttons {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 4px;
+    width: 100%;
+}
+
+/* Legacy class name support */
 .toolbar-group {
     display: flex;
     flex-direction: column;
@@ -172,7 +211,7 @@
 .toolbar-btn:hover::after {
     content: attr(data-tooltip);
     position: absolute;
-    right: 48px;
+    left: 48px;
     top: 50%;
     transform: translateY(-50%);
     background-color: var(--color-primary);
@@ -463,6 +502,7 @@
     margin: 0 !important;
     min-width: 280px;
     max-width: 350px;
+    overflow: hidden; /* Prevent content from escaping */
 }
 
 .leaflet-popup-tip {
@@ -490,10 +530,13 @@
     justify-content: space-between;
     gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
+    min-width: 0; /* Allow flex items to shrink */
 }
 
 .popup-titles {
     flex: 1;
+    min-width: 0; /* Allow text truncation */
+    overflow: hidden;
 }
 
 .popup-title {
@@ -502,6 +545,8 @@
     font-weight: 600;
     color: var(--color-primary);
     line-height: 1.3;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
 }
 
 .popup-subtitle {
@@ -509,6 +554,16 @@
     font-size: 0.85rem;
     color: var(--text-muted);
     font-style: italic;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+}
+
+.popup-id {
+    margin: 2px 0 0;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-family: 'Monaco', 'Consolas', monospace;
+    opacity: 0.7;
 }
 
 .popup-type-badge {
@@ -522,6 +577,11 @@
     color: var(--text-inverse);
     border-radius: var(--radius-full);
     flex-shrink: 0;
+    white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-sizing: border-box;
 }
 
 .popup-description {
@@ -569,6 +629,17 @@
     font-size: 0.8rem;
     color: var(--text-secondary);
     margin-top: var(--spacing-sm);
+    flex-wrap: wrap;
+}
+
+.popup-coords .coord-label {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.popup-coords .coord-value {
+    color: var(--color-primary);
+    font-weight: 600;
 }
 
 .popup-actions {
@@ -1209,14 +1280,23 @@
     }
 
     .map-toolbar {
+        left: 10px;
         right: 10px;
         top: auto;
         bottom: 100px;
-        flex-direction: row;
-        flex-wrap: wrap;
-        max-width: calc(100vw - 20px);
+        width: auto;
     }
 
+    .toolbar-buttons {
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+    }
+
+    .toolbar-section:not(:last-child) {
+        padding-bottom: 10px;
+    }
+
+    /* Legacy support */
     .toolbar-group {
         flex-direction: row;
         flex-wrap: wrap;

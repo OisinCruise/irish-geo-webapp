@@ -171,13 +171,22 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
     """
     Lightweight GeoJSON serializer for map markers
     Optimized for loading many points on the map
+    Includes essential fields for popup display
     """
+    county_name = serializers.CharField(source='county.name_en', read_only=True)
+    era_name = serializers.CharField(source='era.name_en', read_only=True)
+    site_type_display = serializers.CharField(
+        source='get_site_type_display', read_only=True
+    )
+    
     class Meta:
         model = HistoricalSite
         geo_field = 'location'
         fields = [
-            'id', 'name_en', 'name_ga', 'site_type',
-            'significance_level', 'national_monument'
+            'id', 'name_en', 'name_ga', 'site_type', 'site_type_display',
+            'significance_level', 'national_monument',
+            'county_name', 'era_name',
+            'description_en', 'description_ga'
         ]
 
 

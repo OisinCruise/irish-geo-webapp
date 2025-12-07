@@ -6,3 +6,11 @@ db.sqlite3
 .vscode/
 .idea/
 *.log
+.claude
+CLAUDE.md
+WebAppRequirements.txt
+P1-2-Backend-Setup.md
+Implementation-Plan.md
+inspected_models.txt
+.playwright-mcp
+

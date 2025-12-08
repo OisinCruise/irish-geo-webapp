@@ -53,6 +53,8 @@
                data-en="Home" data-ga="Baile">Home</a>
             <a href="{% url 'explore' %}" class="nav-link {% if request.resolver_match.url_name == 'explore' %}active{% endif %}"
                data-en="Explore Map" data-ga="Léarscáil">Explore Map</a>
+            <a href="{% url 'collage' %}" class="nav-link {% if request.resolver_match.url_name == 'collage' %}active{% endif %}"
+               data-en="My Journey" data-ga="Mo Thuras">My Journey</a>
             <a href="{% url 'about' %}" class="nav-link {% if request.resolver_match.url_name == 'about' %}active{% endif %}"
                data-en="About" data-ga="Eolas">About</a>
         </div>

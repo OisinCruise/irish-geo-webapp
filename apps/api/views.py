@@ -15,7 +15,7 @@ from django.contrib.gis.measure import D
 from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 
-from apps.sites.models import HistoricalSite, SiteImage, SiteSource
+from apps.sites.models import HistoricalSite, SiteImage, SiteSource, BucketListItem
 from apps.geography.models import Province, County, HistoricalEra
 from .serializers import (
     # Site serializers
@@ -36,6 +36,12 @@ from .serializers import (
     NearbySearchSerializer,
     BboxSearchSerializer,
     SiteStatisticsSerializer,
+    # Bucket list serializers
+    HistoricalSiteMinimalSerializer,
+    BucketListItemSerializer,
+    BucketListCreateSerializer,
+    BucketListUpdateSerializer,
+    BucketListStatisticsSerializer,
 )
 
 
@@ -428,4 +434,228 @@ class SiteImageViewSet(viewsets.ReadOnlyModelViewSet):
         """Get all images for a specific site"""
         images = self.get_queryset().filter(site_id=site_id).order_by('display_order')
         serializer = SiteImageSerializer(images, many=True)
+        return Response(serializer.data)
+
+
+# ==============================================================================
+# BUCKET LIST VIEWSET
+# ==============================================================================
+
+class BucketListViewSet(viewsets.ModelViewSet):
+    """
+    API endpoint for Bucket List functionality
+
+    Allows users to track sites they want to visit or have visited.
+    Uses session keys for user identification (no authentication required).
+
+    ## Endpoints
+    - `GET /api/v1/bucket-list/` - List all bucket list items for current session
+    - `POST /api/v1/bucket-list/` - Add new site to bucket list
+    - `GET /api/v1/bucket-list/{id}/` - Get specific bucket list item
+    - `PATCH /api/v1/bucket-list/{id}/` - Update bucket list item
+    - `DELETE /api/v1/bucket-list/{id}/` - Remove from bucket list (soft delete)
+    - `POST /api/v1/bucket-list/{id}/mark_visited/` - Mark site as visited
+    - `GET /api/v1/bucket-list/statistics/` - Get bucket list statistics
+    """
+    serializer_class = BucketListItemSerializer
+    pagination_class = StandardResultsPagination
+    filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
+    filterset_fields = ['status']
+    ordering_fields = ['added_at', 'visited_at', 'status']
+    ordering = ['-added_at']
+
+    def get_session_key(self, request):
+        """Get or create session key for user tracking"""
+        if not request.session.session_key:
+            request.session.create()
+        return request.session.session_key
+
+    def get_queryset(self):
+        """Filter queryset by session key"""
+        session_key = self.get_session_key(self.request)
+        return BucketListItem.objects.filter(
+            session_key=session_key,
+            is_deleted=False
+        ).select_related('site', 'site__county', 'site__era')
+
+    def get_serializer_class(self):
+        """Return appropriate serializer based on action"""
+        if self.action == 'create':
+            return BucketListCreateSerializer
+        if self.action in ['update', 'partial_update', 'mark_visited']:
+            return BucketListUpdateSerializer
+        return BucketListItemSerializer
+
+    @extend_schema(
+        request=BucketListCreateSerializer,
+        responses={201: BucketListItemSerializer},
+        description='Add a new site to bucket list'
+    )
+    def create(self, request, *args, **kwargs):
+        """Add a new site to bucket list"""
+        serializer = BucketListCreateSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        session_key = self.get_session_key(request)
+        site_id = serializer.validated_data['site_id']
+        item_status = serializer.validated_data.get('status', 'wishlist')
+
+        # Check if site already in bucket list
+        existing = BucketListItem.objects.filter(
+            session_key=session_key,
+            site_id=site_id,
+            is_deleted=False
+        ).first()
+
+        if existing:
+            return Response(
+                {'error': 'Site already in bucket list', 'item_id': existing.id},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get the site
+        try:
+            site = HistoricalSite.objects.get(
+                id=site_id,
+                is_deleted=False,
+                approval_status='approved'
+            )
+        except HistoricalSite.DoesNotExist:
+            return Response(
+                {'error': 'Site not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Create the bucket list item
+        from django.utils import timezone
+        item = BucketListItem.objects.create(
+            session_key=session_key,
+            site=site,
+            status=item_status,
+            visited_at=timezone.now() if item_status == 'visited' else None
+        )
+
+        result_serializer = BucketListItemSerializer(item)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        responses={204: None},
+        description='Remove item from bucket list (soft delete)'
+    )
+    def destroy(self, request, *args, **kwargs):
+        """Soft delete bucket list item"""
+        instance = self.get_object()
+        from django.utils import timezone
+        instance.is_deleted = True
+        instance.save()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @extend_schema(
+        request=BucketListUpdateSerializer,
+        responses={200: BucketListItemSerializer},
+        description='Mark a site as visited with optional photo upload'
+    )
+    @action(detail=True, methods=['post'])
+    def mark_visited(self, request, pk=None):
+        """
+        Mark a site as visited
+
+        Can include optional photo and caption.
+        Automatically sets visited_at timestamp.
+        """
+        item = self.get_object()
+        from django.utils import timezone
+
+        # Update status and timestamp
+        item.status = 'visited'
+        item.visited_at = timezone.now()
+
+        # Optional photo and caption
+        if 'photo' in request.FILES:
+            item.photo = request.FILES['photo']
+        if 'photo_caption' in request.data:
+            item.photo_caption = request.data['photo_caption']
+
+        item.save()
+
+        serializer = BucketListItemSerializer(item)
+        return Response(serializer.data)
+
+    @extend_schema(
+        responses={200: BucketListStatisticsSerializer},
+        description='Get bucket list statistics (counts by status, county, site type)'
+    )
+    @action(detail=False, methods=['get'])
+    def statistics(self, request):
+        """
+        Get bucket list statistics
+
+        Returns:
+            - Total count
+            - Count by status (wishlist, visited)
+            - Counties explored
+            - Count by county
+            - Count by site type
+        """
+        session_key = self.get_session_key(request)
+        items = BucketListItem.objects.filter(
+            session_key=session_key,
+            is_deleted=False
+        ).select_related('site', 'site__county')
+
+        # Calculate statistics
+        total = items.count()
+        wishlist = items.filter(status='wishlist').count()
+        visited = items.filter(status='visited').count()
+
+        # Counties explored (unique counties from visited items)
+        visited_counties = items.filter(status='visited').values(
+            'site__county__name_en'
+        ).distinct().count()
+
+        # By county breakdown
+        by_county = list(
+            items.values('site__county__name_en')
+            .annotate(count=Count('id'))
+            .order_by('-count')
+        )
+
+        # By site type breakdown
+        by_site_type = dict(
+            items.values('site__site_type')
+            .annotate(count=Count('id'))
+            .values_list('site__site_type', 'count')
+        )
+
+        stats = {
+            'total': total,
+            'wishlist': wishlist,
+            'visited': visited,
+            'counties_explored': visited_counties,
+            'by_county': by_county,
+            'by_site_type': by_site_type
+        }
+
+        return Response(stats)
+
+    @extend_schema(
+        responses={200: BucketListItemSerializer},
+        description='Toggle item between wishlist and visited status'
+    )
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        """Toggle between wishlist and visited status"""
+        item = self.get_object()
+        from django.utils import timezone
+
+        if item.status == 'wishlist':
+            item.status = 'visited'
+            item.visited_at = timezone.now()
+        else:
+            item.status = 'wishlist'
+            item.visited_at = None
+
+        item.save()
+        serializer = BucketListItemSerializer(item)
         return Response(serializer.data)

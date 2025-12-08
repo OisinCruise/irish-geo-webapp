@@ -3,33 +3,716 @@
 
 {% block title %}Home{% endblock %}
 
+{% block extra_css %}
+<style>
+/* ==============================================================================
+   ENHANCED HOME PAGE STYLES
+   ============================================================================== */
+
+/* Animated Gradient Background for Hero */
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0) rotate(0deg); }
+    50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 140, 0, 0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 0 20px 10px rgba(255, 140, 0, 0); }
+}
+
+@keyframes countUp {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+/* Enhanced Hero Section */
+.hero-enhanced {
+    background: linear-gradient(-45deg, #1a5f4a, #145040, #2d8659, #1a5f4a);
+    background-size: 400% 400%;
+    animation: gradientShift 15s ease infinite;
+    color: var(--text-inverse);
+    padding: var(--spacing-xl) var(--spacing-lg);
+    text-align: center;
+    min-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Floating decorative elements */
+.hero-decoration {
+    position: absolute;
+    opacity: 0.1;
+    font-size: 4rem;
+    animation: float 6s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.hero-decoration:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+.hero-decoration:nth-child(2) { top: 20%; right: 15%; animation-delay: 1s; }
+.hero-decoration:nth-child(3) { bottom: 20%; left: 20%; animation-delay: 2s; }
+.hero-decoration:nth-child(4) { bottom: 15%; right: 10%; animation-delay: 3s; }
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+    max-width: 800px;
+}
+
+.hero-enhanced h1 {
+    font-size: 3rem;
+    margin: 0 0 var(--spacing-md) 0;
+    animation: fadeInUp 0.8s ease-out;
+}
+
+.hero-enhanced p {
+    font-size: 1.3rem;
+    max-width: 650px;
+    margin: 0 auto var(--spacing-lg);
+    opacity: 0.95;
+    animation: fadeInUp 0.8s ease-out 0.2s both;
+}
+
+.hero-actions {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    justify-content: center;
+    animation: fadeInUp 0.8s ease-out 0.4s both;
+}
+
+/* ==============================================================================
+   YOUR JOURNEY DASHBOARD SECTION
+   ============================================================================== */
+
+.journey-section {
+    padding: var(--spacing-xl) var(--spacing-lg);
+    background: var(--bg-secondary);
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: var(--spacing-xl);
+}
+
+.section-header h2 {
+    color: var(--color-primary);
+    font-size: 2rem;
+    margin-bottom: var(--spacing-sm);
+}
+
+.section-header p {
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* Journey Stats Grid */
+.journey-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: var(--spacing-lg);
+    max-width: 900px;
+    margin: 0 auto var(--spacing-xl);
+}
+
+.journey-stat-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    box-shadow: var(--shadow-md);
+    transition: all var(--transition-normal);
+    border: 2px solid transparent;
+}
+
+.journey-stat-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--color-accent);
+    box-shadow: var(--shadow-lg);
+}
+
+.stat-icon {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto var(--spacing-md);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+}
+
+.stat-icon.wishlist { background: linear-gradient(135deg, #ff8c00, #ffa333); }
+.stat-icon.visited { background: linear-gradient(135deg, #2d8659, #1a5f4a); }
+.stat-icon.counties { background: linear-gradient(135deg, #3498db, #2980b9); }
+
+.journey-stat-number {
+    font-size: 2.5rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.journey-stat-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Progress Section */
+.journey-progress {
+    max-width: 400px;
+    margin: 0 auto var(--spacing-xl);
+    text-align: center;
+}
+
+.progress-ring-container {
+    position: relative;
+    width: 150px;
+    height: 150px;
+    margin: 0 auto var(--spacing-md);
+}
+
+.progress-ring {
+    transform: rotate(-90deg);
+}
+
+.progress-ring-bg {
+    fill: none;
+    stroke: var(--border-color);
+    stroke-width: 10;
+}
+
+.progress-ring-fill {
+    fill: none;
+    stroke: var(--color-accent);
+    stroke-width: 10;
+    stroke-linecap: round;
+    stroke-dasharray: 377;
+    stroke-dashoffset: 377;
+    transition: stroke-dashoffset 1s ease-out;
+}
+
+.progress-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.8rem;
+    font-weight: bold;
+    color: var(--color-primary);
+}
+
+.progress-label {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+/* Recent Items Preview */
+.recent-items {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.recent-items-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--spacing-md);
+}
+
+.recent-items-header h3 {
+    color: var(--text-primary);
+    margin: 0;
+}
+
+.recent-items-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: var(--spacing-md);
+}
+
+.recent-item-card {
+    background: var(--bg-card);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+    box-shadow: var(--shadow-sm);
+    transition: all var(--transition-fast);
+}
+
+.recent-item-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-md);
+}
+
+.recent-item-image {
+    height: 120px;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    color: var(--text-muted);
+}
+
+.recent-item-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.recent-item-content {
+    padding: var(--spacing-md);
+}
+
+.recent-item-name {
+    font-weight: 600;
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-xs);
+    font-size: 0.9rem;
+}
+
+.recent-item-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.recent-item-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.recent-item-status.wishlist {
+    background: rgba(255, 140, 0, 0.1);
+    color: var(--color-accent);
+}
+
+.recent-item-status.visited {
+    background: rgba(45, 134, 89, 0.1);
+    color: var(--color-primary);
+}
+
+/* Empty Journey State */
+.empty-journey {
+    text-align: center;
+    padding: var(--spacing-xl);
+    background: var(--bg-card);
+    border-radius: var(--radius-lg);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.empty-journey-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-journey h3 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.empty-journey p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* ==============================================================================
+   GLASSMORPHISM FEATURE CARDS
+   ============================================================================== */
+
+.features-section-enhanced {
+    padding: var(--spacing-xl) var(--spacing-lg);
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.features-grid-enhanced {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-lg);
+}
+
+.feature-card-glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    transition: all var(--transition-normal);
+    animation: fadeInUp 0.6s ease-out both;
+}
+
+.feature-card-glass:nth-child(1) { animation-delay: 0.1s; }
+.feature-card-glass:nth-child(2) { animation-delay: 0.2s; }
+.feature-card-glass:nth-child(3) { animation-delay: 0.3s; }
+.feature-card-glass:nth-child(4) { animation-delay: 0.4s; }
+.feature-card-glass:nth-child(5) { animation-delay: 0.5s; }
+.feature-card-glass:nth-child(6) { animation-delay: 0.6s; }
+
+[data-theme="dark"] .feature-card-glass {
+    background: rgba(30, 30, 30, 0.7);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.feature-card-glass:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-lg);
+}
+
+.feature-icon-circle {
+    width: 70px;
+    height: 70px;
+    margin: 0 auto var(--spacing-md);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-primary-light));
+}
+
+.feature-card-glass:nth-child(even) .feature-icon-circle {
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-light));
+}
+
+.feature-card-glass h3 {
+    color: var(--color-primary);
+    margin: 0 0 var(--spacing-sm) 0;
+}
+
+.feature-card-glass p {
+    color: var(--text-secondary);
+    margin: 0;
+    line-height: 1.6;
+}
+
+/* ==============================================================================
+   ENHANCED QUICK STATS
+   ============================================================================== */
+
+.stats-section-enhanced {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+    padding: var(--spacing-xl) var(--spacing-lg);
+}
+
+.stats-section-enhanced h2 {
+    text-align: center;
+    color: white;
+    margin-bottom: var(--spacing-lg);
+}
+
+.stats-grid-enhanced {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: var(--spacing-lg);
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.stat-card-enhanced {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(5px);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-lg);
+    text-align: center;
+    transition: all var(--transition-fast);
+}
+
+.stat-card-enhanced:hover {
+    transform: scale(1.05);
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.stat-number-enhanced {
+    font-size: 3rem;
+    font-weight: bold;
+    background: linear-gradient(135deg, #ffffff, var(--color-accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stat-label-enhanced {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+}
+
+/* ==============================================================================
+   ENHANCED CTA SECTION
+   ============================================================================== */
+
+.cta-section-enhanced {
+    text-align: center;
+    padding: var(--spacing-xl);
+    background: var(--bg-secondary);
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-section-enhanced::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231a5f4a' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    opacity: 0.5;
+}
+
+.cta-content {
+    position: relative;
+    z-index: 1;
+}
+
+.cta-section-enhanced h2 {
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.cta-section-enhanced p {
+    color: var(--text-secondary);
+    max-width: 600px;
+    margin: 0 auto var(--spacing-lg);
+}
+
+.btn-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    background: linear-gradient(135deg, var(--color-accent), var(--color-accent-dark));
+    color: white;
+    padding: var(--spacing-md) var(--spacing-xl);
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius-lg);
+    text-decoration: none;
+    animation: pulse 2s infinite;
+    box-shadow: 0 4px 15px rgba(255, 140, 0, 0.4);
+}
+
+.btn-cta:hover {
+    color: white;
+    animation: none;
+    transform: scale(1.05);
+}
+
+/* ==============================================================================
+   RESPONSIVE ADJUSTMENTS
+   ============================================================================== */
+
+@media (max-width: 768px) {
+    .hero-enhanced h1 {
+        font-size: 2rem;
+    }
+
+    .hero-enhanced p {
+        font-size: 1.1rem;
+    }
+
+    .hero-decoration {
+        font-size: 2rem;
+    }
+
+    .journey-stats {
+        grid-template-columns: repeat(3, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .journey-stat-card {
+        padding: var(--spacing-md);
+    }
+
+    .stat-icon {
+        width: 45px;
+        height: 45px;
+        font-size: 1.3rem;
+    }
+
+    .journey-stat-number {
+        font-size: 1.8rem;
+    }
+
+    .progress-ring-container {
+        width: 120px;
+        height: 120px;
+    }
+
+    .recent-items-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stats-grid-enhanced {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .stat-number-enhanced {
+        font-size: 2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .journey-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .recent-items-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stats-grid-enhanced {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<!-- Hero Section -->
-<section class="hero">
-    <h1 data-en="Discover Ireland's Historical Heritage" data-ga="Fionnachtain Oidhreacht Stairiúil na hÉireann">
-        Discover Ireland's Historical Heritage
-    </h1>
-    <p data-en="Explore thousands of castles, monasteries, ancient monuments, and archaeological sites across Ireland through our interactive map."
-       data-ga="Taiscéal na mílte caisleán, mainistreacha, séadchomharthaí ársa, agus láithreáin seandálaíochta ar fud na hÉireann trínár léarscáil idirghníomhach.">
-        Explore thousands of castles, monasteries, ancient monuments, and archaeological sites across Ireland through our interactive map.
-    </p>
-    <div class="hero-actions">
+<!-- Enhanced Hero Section -->
+<section class="hero-enhanced">
+    <!-- Floating decorations -->
+    <span class="hero-decoration">&#9752;</span>
+    <span class="hero-decoration">&#10048;</span>
+    <span class="hero-decoration">&#9752;</span>
+    <span class="hero-decoration">&#10048;</span>
+
+    <div class="hero-content">
+        <h1 data-en="Discover Ireland's Historical Heritage" data-ga="Fionnachtain Oidhreacht Stairiúil na hÉireann">
+            Discover Ireland's Historical Heritage
+        </h1>
+        <p data-en="Explore thousands of castles, monasteries, ancient monuments, and archaeological sites across Ireland through our interactive map."
+           data-ga="Taiscéal na mílte caisleán, mainistreacha, séadchomharthaí ársa, agus láithreáin seandálaíochta ar fud na hÉireann trínár léarscáil idirghníomhach.">
+            Explore thousands of castles, monasteries, ancient monuments, and archaeological sites across Ireland through our interactive map.
+        </p>
+        <div class="hero-actions">
+            <a href="{% url 'explore' %}" class="btn btn-accent"
+               data-en="Start Exploring" data-ga="Tosaigh ag Taiscéaladh">
+                Start Exploring
+            </a>
+            <a href="{% url 'about' %}" class="btn btn-outline"
+               data-en="Learn More" data-ga="Foghlaim Níos Mó">
+                Learn More
+            </a>
+        </div>
+    </div>
+</section>
+
+<!-- Your Journey Dashboard Section -->
+<section class="journey-section">
+    <div class="section-header">
+        <h2 data-en="Your Journey" data-ga="Do Thuras">Your Journey</h2>
+        <p data-en="Track your exploration of Ireland's historical sites"
+           data-ga="Lean do thaiscéalaíocht ar shuíomhanna stairiúla na hÉireann">
+            Track your exploration of Ireland's historical sites
+        </p>
+    </div>
+
+    <!-- Journey Stats -->
+    <div class="journey-stats">
+        <div class="journey-stat-card">
+            <div class="stat-icon wishlist">&#9733;</div>
+            <div class="journey-stat-number" id="wishlistCount">0</div>
+            <div class="journey-stat-label" data-en="On Wishlist" data-ga="Ar Liosta Mian">On Wishlist</div>
+        </div>
+        <div class="journey-stat-card">
+            <div class="stat-icon visited">&#10004;</div>
+            <div class="journey-stat-number" id="visitedCount">0</div>
+            <div class="journey-stat-label" data-en="Sites Visited" data-ga="Suíomhanna Tugtha Cuairt">Sites Visited</div>
+        </div>
+        <div class="journey-stat-card">
+            <div class="stat-icon counties">&#9873;</div>
+            <div class="journey-stat-number" id="countiesCount">0</div>
+            <div class="journey-stat-label" data-en="Counties Explored" data-ga="Contaetha Taiscéalta">Counties Explored</div>
+        </div>
+    </div>
+
+    <!-- Progress Ring -->
+    <div class="journey-progress" id="journeyProgress">
+        <div class="progress-ring-container">
+            <svg class="progress-ring" width="150" height="150">
+                <circle class="progress-ring-bg" cx="75" cy="75" r="60"/>
+                <circle class="progress-ring-fill" id="progressRing" cx="75" cy="75" r="60"/>
+            </svg>
+            <div class="progress-text" id="progressText">0%</div>
+        </div>
+        <p class="progress-label" data-en="Journey Progress" data-ga="Dul Chun Cinn Turais">Journey Progress</p>
+    </div>
+
+    <!-- Recent Items -->
+    <div class="recent-items" id="recentItemsSection">
+        <div class="recent-items-header">
+            <h3 data-en="Recent Activity" data-ga="Gníomhaíocht Le Déanaí">Recent Activity</h3>
+            <a href="{% url 'collage' %}" class="btn btn-small btn-outline"
+               data-en="View All" data-ga="Féach ar Fad">View All</a>
+        </div>
+        <div class="recent-items-grid" id="recentItemsGrid">
+            <!-- Items will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-journey" id="emptyJourney" style="display: none;">
+        <div class="empty-journey-icon">&#128506;</div>
+        <h3 data-en="Start Your Journey" data-ga="Tosaigh Do Thuras">Start Your Journey</h3>
+        <p data-en="Explore the map and add historical sites to your bucket list. Mark them as visited when you explore them in person!"
+           data-ga="Taiscéal an léarscáil agus cuir suíomhanna stairiúla le do liosta buicéid. Marcáil iad mar a tugadh cuairt orthu nuair a thugann tú cuairt orthu go pearsanta!">
+            Explore the map and add historical sites to your bucket list. Mark them as visited when you explore them in person!
+        </p>
         <a href="{% url 'explore' %}" class="btn btn-accent"
-           data-en="Start Exploring" data-ga="Tosaigh ag Taiscéaladh">
-            Start Exploring
-        </a>
-        <a href="{% url 'about' %}" class="btn btn-outline"
-           data-en="Learn More" data-ga="Foghlaim Níos Mó">
-            Learn More
+           data-en="Explore the Map" data-ga="Taiscéal an Léarscáil">
+            Explore the Map
         </a>
     </div>
 </section>
 
-<!-- Features Section -->
-<section class="features-section">
-    <div class="features-grid">
-        <div class="card feature-card">
-            <div class="feature-icon">🗺️</div>
+<!-- Enhanced Features Section -->
+<section class="features-section-enhanced">
+    <div class="section-header">
+        <h2 data-en="Powerful Features" data-ga="Gnéithe Cumhachtacha">Powerful Features</h2>
+        <p data-en="Everything you need to explore Ireland's rich historical heritage"
+           data-ga="Gach rud atá uait chun oidhreacht stairiúil saibhir na hÉireann a fhiosrú">
+            Everything you need to explore Ireland's rich historical heritage
+        </p>
+    </div>
+
+    <div class="features-grid-enhanced">
+        <div class="feature-card-glass">
+            <div class="feature-icon-circle">&#128506;</div>
             <h3 data-en="Interactive Map" data-ga="Léarscáil Idirghníomhach">Interactive Map</h3>
             <p data-en="Navigate Ireland's historical landscape with our fully interactive Leaflet-powered map featuring satellite imagery, terrain views, and detailed street maps."
                data-ga="Nascleanúint ar thírdhreach stairiúil na hÉireann lenár léarscáil lán-idirghníomhach le híomhánna satailíte, radhairc tírdhreacha, agus léarscáileanna sráide mionsonraithe.">
@@ -37,8 +720,8 @@
             </p>
         </div>
 
-        <div class="card feature-card">
-            <div class="feature-icon">🏰</div>
+        <div class="feature-card-glass">
+            <div class="feature-icon-circle">&#127984;</div>
             <h3 data-en="Rich Historical Data" data-ga="Sonraí Stairiúla Saibhir">Rich Historical Data</h3>
             <p data-en="Access detailed information about castles, monasteries, ringforts, burial sites, and more—with bilingual support in English and Irish."
                data-ga="Rochtain ar fhaisnéis mhionsonraithe faoi chaisleáin, mainistreacha, ráthanna, láithreáin adhlactha, agus níos mó—le tacaíocht dátheangach i mBéarla agus i nGaeilge.">
@@ -46,8 +729,8 @@
             </p>
         </div>
 
-        <div class="card feature-card">
-            <div class="feature-icon">📍</div>
+        <div class="feature-card-glass">
+            <div class="feature-icon-circle">&#128205;</div>
             <h3 data-en="Location Services" data-ga="Seirbhísí Suímh">Location Services</h3>
             <p data-en="Find historical sites near you with geolocation, search by coordinates, and measure distances between points of interest."
                data-ga="Aimsigh láithreáin stairiúla in aice leat le geoshuíomh, cuardaigh de réir comhordanáidí, agus tomhais faid idir pointí spéise.">
@@ -55,17 +738,17 @@
             </p>
         </div>
 
-        <div class="card feature-card">
-            <div class="feature-icon">🎨</div>
-            <h3 data-en="Dark & Light Themes" data-ga="Téamaí Dorcha & Éadrom">Dark & Light Themes</h3>
-            <p data-en="Switch between dark and light themes for comfortable viewing day or night, with your preference saved automatically."
-               data-ga="Athraigh idir téamaí dorcha agus éadroma le haghaidh amharc compordach lá nó oíche, le do rogha sábháilte go huathoibríoch.">
-                Switch between dark and light themes for comfortable viewing day or night, with your preference saved automatically.
+        <div class="feature-card-glass">
+            <div class="feature-icon-circle">&#127912;</div>
+            <h3 data-en="Personal Bucket List" data-ga="Liosta Buicéid Pearsanta">Personal Bucket List</h3>
+            <p data-en="Create your own bucket list of sites to visit. Track your progress, upload photos, and build a visual journey of your explorations."
+               data-ga="Cruthaigh do liosta buicéid féin de shuíomhanna le cuairt a thabhairt orthu. Lean do dhul chun cinn, uaslódáil grianghraif, agus tóg turas físiúil de do thaiscéalaíochtaí.">
+                Create your own bucket list of sites to visit. Track your progress, upload photos, and build a visual journey of your explorations.
             </p>
         </div>
 
-        <div class="card feature-card">
-            <div class="feature-icon">⏱️</div>
+        <div class="feature-card-glass">
+            <div class="feature-icon-circle">&#9201;</div>
             <h3 data-en="Timeline Filtering" data-ga="Scagadh Amlíne">Timeline Filtering</h3>
             <p data-en="Filter sites by historical era—from prehistoric times through medieval period to modern Ireland."
                data-ga="Scag láithreáin de réir ré stairiúil—ón ré réamhstairiúil tríd an tréimhse mheánaoiseach go hÉirinn nua-aimseartha.">
@@ -73,8 +756,8 @@
             </p>
         </div>
 
-        <div class="card feature-card">
-            <div class="feature-icon">📱</div>
+        <div class="feature-card-glass">
+            <div class="feature-icon-circle">&#128241;</div>
             <h3 data-en="Works Everywhere" data-ga="Oibríonn Áit ar Bith">Works Everywhere</h3>
             <p data-en="Fully responsive design works on desktop, tablet, and mobile devices. Take Ireland's history with you wherever you go."
                data-ga="Oibríonn dearadh lán-fhreagrach ar dheasc, táibléad, agus gléasanna soghluaiste. Tóg stair na hÉireann leat áit ar bith a théann tú.">
@@ -84,43 +767,251 @@
     </div>
 </section>
 
-<!-- Quick Stats Section -->
-<section class="features-section" style="background-color: var(--bg-secondary);">
-    <h2 style="text-align: center; color: var(--color-primary); margin-bottom: var(--spacing-lg);"
-        data-en="Explore Ireland's Heritage" data-ga="Taiscéal Oidhreacht na hÉireann">
+<!-- Enhanced Quick Stats Section -->
+<section class="stats-section-enhanced">
+    <h2 data-en="Explore Ireland's Heritage" data-ga="Taiscéal Oidhreacht na hÉireann">
         Explore Ireland's Heritage
     </h2>
-    <div class="features-grid">
-        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
-            <div style="font-size: 2.5rem; color: var(--color-primary); font-weight: bold;">26</div>
-            <p data-en="Counties Covered" data-ga="Contaetha Clúdaithe">Counties Covered</p>
+    <div class="stats-grid-enhanced">
+        <div class="stat-card-enhanced">
+            <div class="stat-number-enhanced" data-count="26">0</div>
+            <div class="stat-label-enhanced" data-en="Counties Covered" data-ga="Contaetha Clúdaithe">Counties Covered</div>
         </div>
-        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
-            <div style="font-size: 2.5rem; color: var(--color-accent); font-weight: bold;">4</div>
-            <p data-en="Historic Provinces" data-ga="Cúigí Stairiúla">Historic Provinces</p>
+        <div class="stat-card-enhanced">
+            <div class="stat-number-enhanced" data-count="4">0</div>
+            <div class="stat-label-enhanced" data-en="Historic Provinces" data-ga="Cúigí Stairiúla">Historic Provinces</div>
         </div>
-        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
-            <div style="font-size: 2.5rem; color: var(--color-primary); font-weight: bold;">13+</div>
-            <p data-en="Site Categories" data-ga="Catagóirí Láithreán">Site Categories</p>
+        <div class="stat-card-enhanced">
+            <div class="stat-number-enhanced" data-count="13">0</div>
+            <div class="stat-label-enhanced" data-en="Site Categories" data-ga="Catagóirí Láithreán">Site Categories</div>
         </div>
-        <div class="card" style="text-align: center; padding: var(--spacing-lg);">
-            <div style="font-size: 2.5rem; color: var(--color-accent); font-weight: bold;">2</div>
-            <p data-en="Languages Supported" data-ga="Teangacha Tacaithe">Languages Supported</p>
+        <div class="stat-card-enhanced">
+            <div class="stat-number-enhanced" data-count="2">0</div>
+            <div class="stat-label-enhanced" data-en="Languages" data-ga="Teangacha">Languages</div>
         </div>
     </div>
 </section>
 
-<!-- Call to Action -->
-<section style="text-align: center; padding: var(--spacing-xl);">
-    <h2 data-en="Ready to Explore?" data-ga="Réidh le Taiscéaladh?">Ready to Explore?</h2>
-    <p style="max-width: 600px; margin: var(--spacing-md) auto var(--spacing-lg);"
-       data-en="Start your journey through Ireland's fascinating history today."
-       data-ga="Tosaigh do thuras trí stair shuimiúil na hÉireann inniu.">
-        Start your journey through Ireland's fascinating history today.
-    </p>
-    <a href="{% url 'explore' %}" class="btn btn-primary" style="font-size: 1.1rem; padding: var(--spacing-md) var(--spacing-xl);"
-       data-en="Open the Map" data-ga="Oscail an Léarscáil">
-        Open the Map
-    </a>
+<!-- Enhanced Call to Action -->
+<section class="cta-section-enhanced">
+    <div class="cta-content">
+        <h2 data-en="Ready to Explore?" data-ga="Réidh le Taiscéaladh?">Ready to Explore?</h2>
+        <p data-en="Start your journey through Ireland's fascinating history today. Discover ancient castles, mysterious monuments, and sacred sites."
+           data-ga="Tosaigh do thuras trí stair shuimiúil na hÉireann inniu. Aimsigh caisleáin ársa, séadchomharthaí mistéireacha, agus suíomhanna naofa.">
+            Start your journey through Ireland's fascinating history today. Discover ancient castles, mysterious monuments, and sacred sites.
+        </p>
+        <a href="{% url 'explore' %}" class="btn-cta"
+           data-en="Open the Map" data-ga="Oscail an Léarscáil">
+            Open the Map &#8594;
+        </a>
+    </div>
 </section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ==============================================================================
+// HOME PAGE JAVASCRIPT
+// ==============================================================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Fetch bucket list statistics
+    fetchJourneyStats();
+
+    // Animate stats on scroll
+    observeStatsSection();
+});
+
+// Fetch journey statistics from API
+async function fetchJourneyStats() {
+    try {
+        const response = await fetch('/api/v1/bucket-list/statistics/');
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch statistics');
+        }
+
+        const stats = await response.json();
+        updateJourneyDashboard(stats);
+
+        // Fetch recent items if there are any
+        if (stats.total > 0) {
+            fetchRecentItems();
+        }
+
+    } catch (error) {
+        console.error('Error fetching journey stats:', error);
+        // Show empty state on error
+        showEmptyJourney();
+    }
+}
+
+// Update the journey dashboard with statistics
+function updateJourneyDashboard(stats) {
+    const total = stats.total || 0;
+    const wishlist = stats.wishlist || 0;
+    const visited = stats.visited || 0;
+    const counties = stats.counties_explored || 0;
+
+    if (total === 0) {
+        showEmptyJourney();
+        return;
+    }
+
+    // Update stat numbers with animation
+    animateNumber('wishlistCount', wishlist);
+    animateNumber('visitedCount', visited);
+    animateNumber('countiesCount', counties);
+
+    // Update progress ring
+    const progress = total > 0 ? Math.round((visited / total) * 100) : 0;
+    updateProgressRing(progress);
+
+    // Show recent items section
+    document.getElementById('recentItemsSection').style.display = 'block';
+    document.getElementById('journeyProgress').style.display = 'block';
+    document.getElementById('emptyJourney').style.display = 'none';
+}
+
+// Show empty journey state
+function showEmptyJourney() {
+    document.getElementById('recentItemsSection').style.display = 'none';
+    document.getElementById('journeyProgress').style.display = 'none';
+    document.getElementById('emptyJourney').style.display = 'block';
+}
+
+// Animate number counting up
+function animateNumber(elementId, targetValue) {
+    const element = document.getElementById(elementId);
+    const duration = 1000;
+    const steps = 30;
+    const increment = targetValue / steps;
+    let current = 0;
+    let step = 0;
+
+    const timer = setInterval(() => {
+        step++;
+        current = Math.min(Math.round(increment * step), targetValue);
+        element.textContent = current;
+
+        if (step >= steps) {
+            clearInterval(timer);
+            element.textContent = targetValue;
+        }
+    }, duration / steps);
+}
+
+// Update progress ring
+function updateProgressRing(percentage) {
+    const ring = document.getElementById('progressRing');
+    const text = document.getElementById('progressText');
+
+    // Circle circumference = 2 * PI * r = 2 * 3.14159 * 60 = 377
+    const circumference = 377;
+    const offset = circumference - (percentage / 100) * circumference;
+
+    // Animate after a short delay
+    setTimeout(() => {
+        ring.style.strokeDashoffset = offset;
+        text.textContent = percentage + '%';
+    }, 300);
+}
+
+// Fetch recent bucket list items
+async function fetchRecentItems() {
+    try {
+        const response = await fetch('/api/v1/bucket-list/?page_size=4');
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch recent items');
+        }
+
+        const data = await response.json();
+        const items = data.results || data || [];
+        renderRecentItems(items.slice(0, 4));
+
+    } catch (error) {
+        console.error('Error fetching recent items:', error);
+    }
+}
+
+// Render recent items grid
+function renderRecentItems(items) {
+    const grid = document.getElementById('recentItemsGrid');
+    grid.innerHTML = '';
+
+    items.forEach(item => {
+        const card = document.createElement('div');
+        card.className = 'recent-item-card';
+
+        const site = item.site || {};
+        const hasPhoto = item.photo && item.photo !== '';
+        const statusClass = item.status === 'visited' ? 'visited' : 'wishlist';
+        const statusIcon = item.status === 'visited' ? '&#10004;' : '&#9733;';
+        const statusText = item.status === 'visited' ? 'Visited' : 'Wishlist';
+
+        card.innerHTML = `
+            <div class="recent-item-image">
+                ${hasPhoto
+                    ? `<img src="${item.photo}" alt="${site.name_en || 'Site'}" loading="lazy">`
+                    : `&#127984;`
+                }
+            </div>
+            <div class="recent-item-content">
+                <div class="recent-item-name">${site.name_en || 'Unknown Site'}</div>
+                <div class="recent-item-meta">
+                    <span>${site.county_name || 'Ireland'}</span>
+                    <span class="recent-item-status ${statusClass}">${statusIcon} ${statusText}</span>
+                </div>
+            </div>
+        `;
+
+        grid.appendChild(card);
+    });
+}
+
+// Observe stats section for scroll animation
+function observeStatsSection() {
+    const statsSection = document.querySelector('.stats-section-enhanced');
+    if (!statsSection) return;
+
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                animateQuickStats();
+                observer.unobserve(entry.target);
+            }
+        });
+    }, { threshold: 0.3 });
+
+    observer.observe(statsSection);
+}
+
+// Animate quick stats numbers
+function animateQuickStats() {
+    const statNumbers = document.querySelectorAll('.stat-number-enhanced');
+
+    statNumbers.forEach(stat => {
+        const target = parseInt(stat.dataset.count) || 0;
+        const suffix = stat.dataset.count === '13' ? '+' : '';
+
+        const duration = 1000;
+        const steps = 20;
+        const increment = target / steps;
+        let current = 0;
+        let step = 0;
+
+        const timer = setInterval(() => {
+            step++;
+            current = Math.min(Math.round(increment * step), target);
+            stat.textContent = current + suffix;
+
+            if (step >= steps) {
+                clearInterval(timer);
+                stat.textContent = target + suffix;
+            }
+        }, duration / steps);
+    });
+}
+</script>
 {% endblock %}

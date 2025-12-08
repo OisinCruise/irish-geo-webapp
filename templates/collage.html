@@ -1,0 +1,741 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Journey{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ==============================================================================
+   CORK BOARD STYLES
+   ============================================================================== */
+
+.cork-board {
+    min-height: calc(100vh - 120px);
+    background-color: #c19a6b;
+    background-image:
+        radial-gradient(ellipse at 20% 30%, rgba(139, 90, 43, 0.3) 0%, transparent 50%),
+        radial-gradient(ellipse at 80% 70%, rgba(139, 90, 43, 0.2) 0%, transparent 50%),
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 2px,
+            rgba(139, 90, 43, 0.1) 2px,
+            rgba(139, 90, 43, 0.1) 4px
+        );
+    padding: var(--spacing-xl);
+    border: 12px solid #8b5a2b;
+    border-radius: var(--radius-lg);
+    margin: var(--spacing-lg);
+    box-shadow:
+        inset 0 0 50px rgba(0,0,0,0.1),
+        0 10px 30px rgba(0,0,0,0.3);
+}
+
+[data-theme="dark"] .cork-board {
+    background-color: #8b6b4f;
+    border-color: #5a3825;
+}
+
+/* ==============================================================================
+   HERO SECTION
+   ============================================================================== */
+
+.collage-hero {
+    text-align: center;
+    padding: var(--spacing-xl) 0;
+    margin-bottom: var(--spacing-xl);
+}
+
+.collage-hero h1 {
+    font-size: 2.5rem;
+    color: #4a3728;
+    text-shadow: 1px 1px 2px rgba(255,255,255,0.3);
+    margin-bottom: var(--spacing-sm);
+}
+
+[data-theme="dark"] .collage-hero h1 {
+    color: #f0e6d3;
+}
+
+.collage-hero p {
+    font-size: 1.1rem;
+    color: #6b5344;
+}
+
+[data-theme="dark"] .collage-hero p {
+    color: #d4c4b0;
+}
+
+/* ==============================================================================
+   STATS SUMMARY
+   ============================================================================== */
+
+.stats-summary {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-xl);
+    margin-bottom: var(--spacing-xl);
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    background: rgba(255,255,255,0.9);
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-lg);
+    text-align: center;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    min-width: 120px;
+}
+
+[data-theme="dark"] .stat-item {
+    background: rgba(30,30,30,0.9);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--color-primary);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ==============================================================================
+   FILTER CONTROLS
+   ============================================================================== */
+
+.filter-controls {
+    display: flex;
+    justify-content: center;
+    gap: var(--spacing-sm);
+    flex-wrap: wrap;
+    margin-bottom: var(--spacing-xl);
+}
+
+.filter-btn {
+    padding: var(--spacing-xs) var(--spacing-md);
+    background: rgba(255,255,255,0.8);
+    border: 2px solid transparent;
+    border-radius: var(--radius-full);
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: all var(--transition-fast);
+}
+
+.filter-btn:hover,
+.filter-btn.active {
+    background: var(--color-accent);
+    color: white;
+    border-color: var(--color-accent);
+}
+
+/* ==============================================================================
+   COLLAGE GRID
+   ============================================================================== */
+
+.collage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--spacing-xl);
+    padding: var(--spacing-md);
+}
+
+/* ==============================================================================
+   POLAROID CARDS
+   ============================================================================== */
+
+.polaroid {
+    background: white;
+    padding: 12px 12px 40px;
+    box-shadow:
+        0 4px 6px rgba(0,0,0,0.1),
+        0 10px 20px rgba(0,0,0,0.15);
+    position: relative;
+    cursor: pointer;
+    transition: all var(--transition-normal);
+    transform-origin: center center;
+}
+
+/* Random rotations for natural look */
+.polaroid:nth-child(4n+1) { transform: rotate(-2deg); }
+.polaroid:nth-child(4n+2) { transform: rotate(1.5deg); }
+.polaroid:nth-child(4n+3) { transform: rotate(-1deg); }
+.polaroid:nth-child(4n+4) { transform: rotate(2deg); }
+
+.polaroid:hover {
+    transform: rotate(0deg) scale(1.05);
+    z-index: 10;
+    box-shadow:
+        0 8px 16px rgba(0,0,0,0.2),
+        0 20px 40px rgba(0,0,0,0.25);
+}
+
+[data-theme="dark"] .polaroid {
+    background: #2d2d2d;
+}
+
+/* Push pin effect */
+.polaroid::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    box-shadow:
+        inset -2px -2px 4px rgba(0,0,0,0.3),
+        0 2px 4px rgba(0,0,0,0.2);
+}
+
+/* Pin colors */
+.polaroid:nth-child(5n+1)::before { background: linear-gradient(135deg, #e74c3c, #c0392b); }
+.polaroid:nth-child(5n+2)::before { background: linear-gradient(135deg, #3498db, #2980b9); }
+.polaroid:nth-child(5n+3)::before { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+.polaroid:nth-child(5n+4)::before { background: linear-gradient(135deg, #f1c40f, #f39c12); }
+.polaroid:nth-child(5n+5)::before { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+
+/* Pin shine effect */
+.polaroid::after {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: calc(50% - 3px);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.6);
+}
+
+.polaroid-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    background: var(--bg-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.polaroid-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.polaroid-placeholder {
+    font-size: 4rem;
+    color: var(--text-muted);
+}
+
+.polaroid-content {
+    padding: var(--spacing-md) 0 0;
+}
+
+.polaroid-caption {
+    font-family: 'Caveat', 'Comic Sans MS', cursive;
+    font-size: 1.1rem;
+    color: #4a3728;
+    margin-bottom: var(--spacing-xs);
+    min-height: 1.5em;
+}
+
+[data-theme="dark"] .polaroid-caption {
+    color: #d4c4b0;
+}
+
+.polaroid-site {
+    font-weight: 600;
+    color: var(--color-primary);
+    font-size: 0.9rem;
+    margin-bottom: var(--spacing-xs);
+}
+
+.polaroid-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.polaroid-county {
+    background: var(--color-accent);
+    color: white;
+    padding: 2px 8px;
+    border-radius: var(--radius-full);
+    font-size: 0.7rem;
+}
+
+/* ==============================================================================
+   EMPTY STATE
+   ============================================================================== */
+
+.empty-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+    background: rgba(255,255,255,0.9);
+    border-radius: var(--radius-lg);
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+[data-theme="dark"] .empty-state {
+    background: rgba(30,30,30,0.9);
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: var(--spacing-md);
+}
+
+.empty-state h3 {
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-sm);
+}
+
+.empty-state p {
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-lg);
+}
+
+/* ==============================================================================
+   CTA SECTION
+   ============================================================================== */
+
+.collage-cta {
+    text-align: center;
+    padding: var(--spacing-xl);
+    margin-top: var(--spacing-xl);
+    background: rgba(255,255,255,0.8);
+    border-radius: var(--radius-lg);
+}
+
+[data-theme="dark"] .collage-cta {
+    background: rgba(30,30,30,0.8);
+}
+
+/* ==============================================================================
+   MODAL
+   ============================================================================== */
+
+.photo-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: var(--spacing-lg);
+}
+
+.photo-modal.active {
+    display: flex;
+}
+
+.modal-content {
+    background: white;
+    max-width: 800px;
+    max-height: 90vh;
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+}
+
+[data-theme="dark"] .modal-content {
+    background: var(--bg-card);
+}
+
+.modal-close {
+    position: absolute;
+    top: var(--spacing-sm);
+    right: var(--spacing-sm);
+    background: rgba(0,0,0,0.5);
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.5rem;
+    cursor: pointer;
+    z-index: 1;
+}
+
+.modal-image {
+    width: 100%;
+    max-height: 60vh;
+    object-fit: contain;
+}
+
+.modal-details {
+    padding: var(--spacing-lg);
+}
+
+.modal-site-name {
+    font-size: 1.5rem;
+    color: var(--color-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.modal-caption {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+}
+
+.modal-meta {
+    display: flex;
+    gap: var(--spacing-md);
+    flex-wrap: wrap;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+/* ==============================================================================
+   LOADING STATE
+   ============================================================================== */
+
+.loading-state {
+    text-align: center;
+    padding: var(--spacing-xl);
+}
+
+.loading-spinner-large {
+    width: 60px;
+    height: 60px;
+    border: 4px solid var(--border-color);
+    border-top-color: var(--color-primary);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto var(--spacing-md);
+}
+
+/* ==============================================================================
+   RESPONSIVE
+   ============================================================================== */
+
+@media (max-width: 768px) {
+    .cork-board {
+        margin: var(--spacing-sm);
+        padding: var(--spacing-md);
+        border-width: 8px;
+    }
+
+    .collage-hero h1 {
+        font-size: 1.8rem;
+    }
+
+    .stats-summary {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .collage-grid {
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: var(--spacing-lg);
+    }
+
+    .polaroid {
+        padding: 8px 8px 30px;
+    }
+
+    .polaroid-image {
+        height: 150px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cork-board">
+    <!-- Hero Section -->
+    <div class="collage-hero">
+        <h1 data-en="My Journey Through Ireland" data-ga="Mo Thuras Tríd Éirinn">
+            My Journey Through Ireland
+        </h1>
+        <p data-en="A collection of memories from historical sites I've explored"
+           data-ga="Bailiúchán cuimhní ó shuíomhanna stairiúla a d'iniúch mé">
+            A collection of memories from historical sites I've explored
+        </p>
+    </div>
+
+    <!-- Stats Summary -->
+    <div class="stats-summary">
+        <div class="stat-item">
+            <div class="stat-number" id="totalPhotos">0</div>
+            <div class="stat-label" data-en="Photos" data-ga="Grianghraif">Photos</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="countiesVisited">0</div>
+            <div class="stat-label" data-en="Counties" data-ga="Contaetha">Counties</div>
+        </div>
+        <div class="stat-item">
+            <div class="stat-number" id="sitesExplored">0</div>
+            <div class="stat-label" data-en="Sites Explored" data-ga="Suíomhanna">Sites Explored</div>
+        </div>
+    </div>
+
+    <!-- Filter Controls -->
+    <div class="filter-controls" id="filterControls">
+        <button class="filter-btn active" data-filter="all"
+                data-en="All" data-ga="Gach">All</button>
+    </div>
+
+    <!-- Loading State -->
+    <div class="loading-state" id="loadingState">
+        <div class="loading-spinner-large"></div>
+        <p data-en="Loading your journey..." data-ga="Ag lódáil do thuras...">Loading your journey...</p>
+    </div>
+
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState" style="display: none;">
+        <div class="empty-icon">📷</div>
+        <h3 data-en="No memories yet" data-ga="Gan cuimhní fós">No memories yet</h3>
+        <p data-en="Start exploring Ireland's historical sites and mark them as visited to build your journey collection."
+           data-ga="Tosaigh ag taiscéaladh suíomhanna stairiúla na hÉireann agus marcáil iad mar a tugadh cuairt orthu chun do bhailiúchán turais a thógáil.">
+            Start exploring Ireland's historical sites and mark them as visited to build your journey collection.
+        </p>
+        <a href="{% url 'explore' %}" class="btn btn-accent"
+           data-en="Start Exploring" data-ga="Tosaigh ag Taiscéaladh">
+            Start Exploring
+        </a>
+    </div>
+
+    <!-- Collage Grid -->
+    <div class="collage-grid" id="collageGrid" style="display: none;"></div>
+
+    <!-- CTA Section -->
+    <div class="collage-cta" id="ctaSection" style="display: none;">
+        <h3 data-en="Continue Your Journey" data-ga="Lean ar Aghaidh le Do Thuras">Continue Your Journey</h3>
+        <p data-en="Discover more of Ireland's fascinating historical sites"
+           data-ga="Faigh amach níos mó faoi shuíomhanna stairiúla suntasacha na hÉireann">
+            Discover more of Ireland's fascinating historical sites
+        </p>
+        <a href="{% url 'explore' %}" class="btn btn-primary"
+           data-en="Explore the Map" data-ga="Taiscéal an Léarscáil">
+            Explore the Map
+        </a>
+    </div>
+</div>
+
+<!-- Photo Modal -->
+<div class="photo-modal" id="photoModal">
+    <div class="modal-content">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <img class="modal-image" id="modalImage" src="" alt="">
+        <div class="modal-details">
+            <h2 class="modal-site-name" id="modalSiteName"></h2>
+            <p class="modal-caption" id="modalCaption"></p>
+            <div class="modal-meta">
+                <span id="modalCounty"></span>
+                <span id="modalDate"></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ==============================================================================
+// COLLAGE WALL JAVASCRIPT
+// ==============================================================================
+
+let bucketListItems = [];
+let uniqueCounties = new Set();
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    fetchBucketListData();
+});
+
+// Fetch bucket list data from API
+async function fetchBucketListData() {
+    try {
+        const response = await fetch('/api/v1/bucket-list/?status=visited');
+
+        if (!response.ok) {
+            throw new Error('Failed to fetch data');
+        }
+
+        const data = await response.json();
+        bucketListItems = data.results || data || [];
+
+        // Process data
+        processData();
+
+    } catch (error) {
+        console.error('Error fetching bucket list:', error);
+        // Show empty state on error
+        showEmptyState();
+    }
+}
+
+// Process and display data
+function processData() {
+    document.getElementById('loadingState').style.display = 'none';
+
+    if (bucketListItems.length === 0) {
+        showEmptyState();
+        return;
+    }
+
+    // Calculate unique counties
+    bucketListItems.forEach(item => {
+        if (item.site && item.site.county_name) {
+            uniqueCounties.add(item.site.county_name);
+        }
+    });
+
+    // Update stats
+    updateStats();
+
+    // Build filter buttons
+    buildFilterButtons();
+
+    // Render collage grid
+    renderCollageGrid(bucketListItems);
+
+    // Show grid and CTA
+    document.getElementById('collageGrid').style.display = 'grid';
+    if (bucketListItems.length < 10) {
+        document.getElementById('ctaSection').style.display = 'block';
+    }
+}
+
+// Show empty state
+function showEmptyState() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('emptyState').style.display = 'block';
+}
+
+// Update statistics
+function updateStats() {
+    document.getElementById('totalPhotos').textContent =
+        bucketListItems.filter(item => item.photo).length;
+    document.getElementById('countiesVisited').textContent = uniqueCounties.size;
+    document.getElementById('sitesExplored').textContent = bucketListItems.length;
+}
+
+// Build filter buttons for counties
+function buildFilterButtons() {
+    const container = document.getElementById('filterControls');
+
+    uniqueCounties.forEach(county => {
+        const btn = document.createElement('button');
+        btn.className = 'filter-btn';
+        btn.dataset.filter = county;
+        btn.textContent = county;
+        btn.onclick = function() { filterByCounty(county, this); };
+        container.appendChild(btn);
+    });
+}
+
+// Filter collage by county
+function filterByCounty(county, btn) {
+    // Update active button
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // Filter items
+    const filtered = county === 'all'
+        ? bucketListItems
+        : bucketListItems.filter(item => item.site && item.site.county_name === county);
+
+    renderCollageGrid(filtered);
+}
+
+// Render the collage grid
+function renderCollageGrid(items) {
+    const grid = document.getElementById('collageGrid');
+    grid.innerHTML = '';
+
+    items.forEach((item, index) => {
+        const card = createPolaroidCard(item, index);
+        grid.appendChild(card);
+    });
+}
+
+// Create a polaroid card element
+function createPolaroidCard(item, index) {
+    const card = document.createElement('div');
+    card.className = 'polaroid';
+    card.onclick = () => openModal(item);
+
+    const site = item.site || {};
+    const hasPhoto = item.photo && item.photo !== '';
+    const visitedDate = item.visited_at ? new Date(item.visited_at).toLocaleDateString() : '';
+
+    card.innerHTML = `
+        <div class="polaroid-image">
+            ${hasPhoto
+                ? `<img src="${item.photo}" alt="${site.name_en || 'Site photo'}" loading="lazy">`
+                : `<span class="polaroid-placeholder">🏰</span>`
+            }
+        </div>
+        <div class="polaroid-content">
+            <p class="polaroid-caption">${item.photo_caption || ''}</p>
+            <p class="polaroid-site">${site.name_en || 'Unknown Site'}</p>
+            <div class="polaroid-meta">
+                <span class="polaroid-county">${site.county_name || 'Ireland'}</span>
+                <span class="polaroid-date">${visitedDate}</span>
+            </div>
+        </div>
+    `;
+
+    return card;
+}
+
+// Open modal with photo details
+function openModal(item) {
+    const modal = document.getElementById('photoModal');
+    const site = item.site || {};
+
+    document.getElementById('modalImage').src = item.photo || '';
+    document.getElementById('modalImage').style.display = item.photo ? 'block' : 'none';
+    document.getElementById('modalSiteName').textContent = site.name_en || 'Unknown Site';
+    document.getElementById('modalCaption').textContent = item.photo_caption || 'No caption';
+    document.getElementById('modalCounty').textContent = `📍 ${site.county_name || 'Ireland'}`;
+    document.getElementById('modalDate').textContent = item.visited_at
+        ? `📅 ${new Date(item.visited_at).toLocaleDateString()}`
+        : '';
+
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('photoModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// Close modal on background click
+document.getElementById('photoModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeModal();
+    }
+});
+
+// Handle "All" filter button
+document.querySelector('.filter-btn[data-filter="all"]').onclick = function() {
+    filterByCounty('all', this);
+};
+</script>
+{% endblock %}

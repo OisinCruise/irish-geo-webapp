@@ -13,6 +13,7 @@ from .views import (
     CountyViewSet,
     HistoricalEraViewSet,
     SiteImageViewSet,
+    BucketListViewSet,
 )
 
 # Create router and register viewsets
@@ -22,6 +23,7 @@ router.register(r'provinces', ProvinceViewSet, basename='province')
 router.register(r'counties', CountyViewSet, basename='county')
 router.register(r'eras', HistoricalEraViewSet, basename='era')
 router.register(r'images', SiteImageViewSet, basename='image')
+router.register(r'bucket-list', BucketListViewSet, basename='bucket-list')
 
 # API URL patterns
 urlpatterns = [

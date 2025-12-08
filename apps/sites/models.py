@@ -748,3 +748,124 @@ class SiteSource(models.Model):
         if self.publisher:
             parts.append(self.publisher)
         return ". ".join(parts)
+
+
+# ==============================================================================
+# BUCKET LIST MODEL
+# ==============================================================================
+
+class BucketListItem(models.Model):
+    """
+    Bucket List Item (Mír Liosta Buicéid) - User's wishlist and visited sites
+    Tracks sites users want to visit or have visited without requiring authentication
+    Uses session-based tracking for anonymous users
+    """
+
+    STATUS_CHOICES = [
+        ('wishlist', _('Wishlist - Want to Visit')),
+        ('visited', _('Visited - Completed')),
+    ]
+
+    # Primary fields
+    id = models.AutoField(primary_key=True)
+
+    # Foreign Key to Site
+    site = models.ForeignKey(
+        HistoricalSite,
+        on_delete=models.CASCADE,
+        related_name='bucket_list_items',
+        db_column='site_id',
+        verbose_name=_("Historical Site"),
+        help_text=_("Site on bucket list")
+    )
+
+    # Session-based user tracking (no authentication required)
+    session_key = models.CharField(
+        max_length=40,
+        db_index=True,
+        verbose_name=_("Session Key"),
+        help_text=_("Django session key for anonymous user tracking")
+    )
+
+    # Status tracking
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='wishlist',
+        db_index=True,
+        verbose_name=_("Status"),
+        help_text=_("Current status of bucket list item")
+    )
+
+    # Timestamps
+    added_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_("Added At"),
+        help_text=_("When item was added to bucket list")
+    )
+
+    visited_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Visited At"),
+        help_text=_("When user marked site as visited")
+    )
+
+    # User content - photo and caption
+    photo = models.ImageField(
+        upload_to='bucket_photos/',
+        null=True,
+        blank=True,
+        verbose_name=_("Photo"),
+        help_text=_("User's photo from visit")
+    )
+
+    photo_caption = models.TextField(
+        blank=True,
+        verbose_name=_("Photo Caption"),
+        help_text=_("User's notes or caption about their visit")
+    )
+
+    # Soft delete
+    is_deleted = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name=_("Is Deleted"),
+        help_text=_("Soft delete flag")
+    )
+
+    class Meta:
+        managed = True  # Django manages this table (new feature)
+        db_table = 'bucket_list_item'
+        ordering = ['-added_at']
+        verbose_name = _("Bucket List Item")
+        verbose_name_plural = _("Bucket List Items")
+        indexes = [
+            models.Index(fields=['session_key', 'status']),
+            models.Index(fields=['site', 'session_key']),
+            models.Index(fields=['status']),
+        ]
+        # Ensure one user can't add same site twice to their bucket list
+        constraints = [
+            models.UniqueConstraint(
+                fields=['site', 'session_key'],
+                condition=models.Q(is_deleted=False),
+                name='unique_active_bucket_item'
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.session_key[:8]}... - {self.site.name_en} ({self.status})"
+
+    def mark_as_visited(self):
+        """Mark item as visited with current timestamp"""
+        from django.utils import timezone
+        self.status = 'visited'
+        self.visited_at = timezone.now()
+        self.save()
+
+    def mark_as_wishlist(self):
+        """Mark item as wishlist (undo visited status)"""
+        self.status = 'wishlist'
+        self.visited_at = None
+        self.save()

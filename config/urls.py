@@ -21,6 +21,7 @@ urlpatterns = [
     path('', TemplateView.as_view(template_name='home.html'), name='home'),
     path('explore/', TemplateView.as_view(template_name='explore.html'), name='explore'),
     path('about/', TemplateView.as_view(template_name='about.html'), name='about'),
+    path('my-journey/', TemplateView.as_view(template_name='collage.html'), name='collage'),
 
     # ===========================================================================
     # DJANGO ADMIN

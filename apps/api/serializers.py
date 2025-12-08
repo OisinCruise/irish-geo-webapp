@@ -380,3 +380,118 @@ class SiteStatisticsSerializer(serializers.Serializer):
     by_era = serializers.ListField()
     by_county = serializers.ListField()
     by_significance = serializers.DictField()
+
+
+# ==============================================================================
+# BUCKET LIST SERIALIZERS
+# ==============================================================================
+
+class HistoricalSiteMinimalSerializer(serializers.ModelSerializer):
+    """Minimal site serializer for nested use in bucket list"""
+    county_name = serializers.SerializerMethodField()
+    era_name = serializers.SerializerMethodField()
+    site_type_display = serializers.CharField(
+        source='get_site_type_display', read_only=True
+    )
+    coordinates = serializers.ReadOnlyField()
+
+    class Meta:
+        model = HistoricalSite
+        fields = [
+            'id', 'name_en', 'name_ga', 'site_type', 'site_type_display',
+            'significance_level', 'national_monument', 'county_name',
+            'era_name', 'coordinates', 'description_en'
+        ]
+
+    def get_county_name(self, obj):
+        return obj.county.name_en if obj.county else None
+
+    def get_era_name(self, obj):
+        return obj.era.name_en if obj.era else None
+
+
+class BucketListItemSerializer(serializers.ModelSerializer):
+    """
+    Full serializer for bucket list items with nested site information
+    Used for list and retrieve operations
+    """
+    site = HistoricalSiteMinimalSerializer(read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        from apps.sites.models import BucketListItem
+        model = BucketListItem
+        fields = [
+            'id', 'site', 'status', 'status_display', 'added_at',
+            'visited_at', 'photo', 'photo_caption'
+        ]
+        read_only_fields = ['id', 'added_at']
+
+
+class BucketListCreateSerializer(serializers.Serializer):
+    """
+    Serializer for creating new bucket list items
+    Only requires site_id and optional status
+    """
+    site_id = serializers.IntegerField(required=True)
+    status = serializers.CharField(max_length=20, default='wishlist')
+
+    def validate_site_id(self, value):
+        """Validate that the site exists and is approved"""
+        try:
+            site = HistoricalSite.objects.get(
+                id=value,
+                is_deleted=False,
+                approval_status='approved'
+            )
+        except HistoricalSite.DoesNotExist:
+            raise serializers.ValidationError(
+                "Site does not exist or is not approved"
+            )
+        return value
+
+    def validate_status(self, value):
+        """Validate status is one of the allowed values"""
+        allowed_statuses = ['wishlist', 'visited']
+        if value not in allowed_statuses:
+            raise serializers.ValidationError(
+                f"Status must be one of: {', '.join(allowed_statuses)}"
+            )
+        return value
+
+
+class BucketListUpdateSerializer(serializers.Serializer):
+    """
+    Serializer for updating bucket list items
+    Allows updating status, photo, and caption
+    """
+    status = serializers.CharField(max_length=20, required=False)
+    photo = serializers.ImageField(required=False, allow_null=True)
+    photo_caption = serializers.CharField(allow_blank=True, required=False)
+    visited_at = serializers.DateTimeField(allow_null=True, required=False)
+
+    def validate_status(self, value):
+        """Validate status is one of the allowed values"""
+        allowed_statuses = ['wishlist', 'visited']
+        if value not in allowed_statuses:
+            raise serializers.ValidationError(
+                f"Status must be one of: {', '.join(allowed_statuses)}"
+            )
+        return value
+
+    def validate(self, data):
+        """Set visited_at when status is changed to visited"""
+        if data.get('status') == 'visited' and not data.get('visited_at'):
+            from django.utils import timezone
+            data['visited_at'] = timezone.now()
+        return data
+
+
+class BucketListStatisticsSerializer(serializers.Serializer):
+    """Serializer for bucket list statistics"""
+    total = serializers.IntegerField()
+    wishlist = serializers.IntegerField()
+    visited = serializers.IntegerField()
+    counties_explored = serializers.IntegerField()
+    by_county = serializers.ListField()
+    by_site_type = serializers.DictField()

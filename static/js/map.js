@@ -988,6 +988,7 @@
      * Toggle measurement tool
      */
     let drawControl = null;
+    let activeDrawHandler = null;
 
     function toggleMeasurementTool() {
         measurementActive = !measurementActive;
@@ -1045,14 +1046,37 @@
             });
             map.addControl(drawControl);
 
-            showToast('Measurement tool enabled - draw shapes on map', 'info');
+            // Automatically start polyline (distance) drawing mode
+            activeDrawHandler = new L.Draw.Polyline(map, {
+                shapeOptions: {
+                    color: CONFIG.defaultColor,
+                    weight: 4
+                },
+                metric: true,
+                feet: false
+            });
+            activeDrawHandler.enable();
+
+            // Set cursor to crosshair to indicate drawing mode
+            map.getContainer().style.cursor = 'crosshair';
+
+            showToast('Click on map to start measuring distance. Double-click to finish.', 'info');
         } else {
             btn?.classList.remove('active');
+
+            // Disable active draw handler
+            if (activeDrawHandler) {
+                activeDrawHandler.disable();
+                activeDrawHandler = null;
+            }
 
             if (drawControl) {
                 map.removeControl(drawControl);
                 drawControl = null;
             }
+
+            // Reset cursor
+            map.getContainer().style.cursor = '';
 
             showToast('Measurement tool disabled', 'info');
         }
@@ -1432,6 +1456,11 @@
         if (currentTool !== 'measure' && measurementActive) {
             measurementActive = false;
             document.getElementById('measureBtn')?.classList.remove('active');
+            // Disable active draw handler
+            if (activeDrawHandler) {
+                activeDrawHandler.disable();
+                activeDrawHandler = null;
+            }
             if (drawControl) {
                 map.removeControl(drawControl);
                 drawControl = null;

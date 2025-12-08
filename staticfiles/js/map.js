@@ -26,6 +26,40 @@
     // CONFIGURATION
     // ===========================================================================
 
+    // ===========================================================================
+    // SVG ICONS (replacing emojis for professional look)
+    // ===========================================================================
+
+    const ICONS = {
+        // Map & Navigation
+        map: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>',
+        satellite: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>',
+        terrain: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M14 6l-3.75 5 2.85 3.8-1.6 1.2C9.81 13.75 7 10 7 10l-6 8h22L14 6z"/></svg>',
+        pin: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>',
+        monument: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2L2 7v9c0 5.55 3.84 10.74 10 12 6.16-1.26 10-6.45 10-12V7l-10-5zm0 4l6 3v6.09c0 3.89-2.66 7.52-6 8.83-3.34-1.31-6-4.94-6-8.83V9l6-3z"/></svg>',
+        pencil: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>',
+        compass: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5.5-2.5l7.51-3.49L17.5 6.5 9.99 9.99 6.5 17.5zm5.5-6.6c.61 0 1.1.49 1.1 1.1s-.49 1.1-1.1 1.1-1.1-.49-1.1-1.1.49-1.1 1.1-1.1z"/></svg>',
+        
+        // Status & Actions
+        star: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>',
+        starOutline: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/></svg>',
+        check: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>',
+        close: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>',
+        trophy: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M19 5h-2V3H7v2H5c-1.1 0-2 .9-2 2v1c0 2.55 1.92 4.63 4.39 4.94.63 1.5 1.98 2.63 3.61 2.96V19H7v2h10v-2h-4v-3.1c1.63-.33 2.98-1.46 3.61-2.96C19.08 12.63 21 10.55 21 8V7c0-1.1-.9-2-2-2zM5 8V7h2v3.82C5.84 10.4 5 9.3 5 8zm14 0c0 1.3-.84 2.4-2 2.82V7h2v1z"/></svg>',
+        trash: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>',
+        pushpin: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M16 9V4h1c.55 0 1-.45 1-1s-.45-1-1-1H7c-.55 0-1 .45-1 1s.45 1 1 1h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"/></svg>',
+        
+        // Info & Alerts  
+        info: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>',
+        warning: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>',
+        success: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>',
+        error: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>',
+        
+        // Building types
+        castle: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M21 9V7l-2-1V2h-2v2h-2V2h-2v2h-2V2H9v2H7V2H5v4L3 7v2l2 1v11h6v-5h2v5h6V10l2-1zm-4 9h-2v-2h-2v2H9v-5H7V7h10v6h-2v5h2z"/></svg>',
+        era: '<svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/></svg>'
+    };
+
     const CONFIG = {
         // Ireland center coordinates
         defaultCenter: [53.4129, -8.2439],
@@ -33,10 +67,10 @@
         minZoom: 5,
         maxZoom: 18,
 
-        // Ireland bounds for constraining the map
+        // Ireland bounds for constraining the map (extended for popup visibility)
         maxBounds: [
-            [51.0, -11.5],  // Southwest
-            [56.0, -4.5]    // Northeast
+            [50.5, -12.0],  // Southwest (extended slightly)
+            [57.5, -3.5]    // Northeast (extended north for popup visibility)
         ],
 
         // API endpoints
@@ -134,7 +168,7 @@
             minZoom: CONFIG.minZoom,
             maxZoom: CONFIG.maxZoom,
             maxBounds: CONFIG.maxBounds,
-            maxBoundsViscosity: 0.8,
+            maxBoundsViscosity: 0.7,
             zoomControl: false
         });
 
@@ -187,9 +221,9 @@
 
         // Store basemaps for layer control
         window.baseMaps = {
-            '<span class="layer-icon">🗺️</span> Street Map': osmLayer,
-            '<span class="layer-icon">🛰️</span> Satellite': satelliteLayer,
-            '<span class="layer-icon">⛰️</span> Terrain': terrainLayer
+            [`<span class="layer-icon">${ICONS.map}</span> Street Map`]: osmLayer,
+            [`<span class="layer-icon">${ICONS.satellite}</span> Satellite`]: satelliteLayer,
+            [`<span class="layer-icon">${ICONS.terrain}</span> Terrain`]: terrainLayer
         };
     }
 
@@ -334,10 +368,10 @@
 
         // Layer control
         const overlayMaps = {
-            '<span class="layer-icon">📍</span> Historical Sites': markersCluster,
-            '<span class="layer-icon">🗺️</span> County Boundaries': countiesLayer,
-            '<span class="layer-icon">🏛️</span> Province Boundaries': provincesLayer,
-            '<span class="layer-icon">✏️</span> Your Markers': userMarkersLayer
+            [`<span class="layer-icon">${ICONS.pin}</span> Historical Sites`]: markersCluster,
+            [`<span class="layer-icon">${ICONS.map}</span> County Boundaries`]: countiesLayer,
+            [`<span class="layer-icon">${ICONS.monument}</span> Province Boundaries`]: provincesLayer,
+            [`<span class="layer-icon">${ICONS.pencil}</span> Your Markers`]: userMarkersLayer
         };
 
         L.control.layers(window.baseMaps, overlayMaps, {
@@ -586,7 +620,6 @@
             : (props.description_en || props.description || '');
 
         const siteTypeDisplay = props.site_type_display || formatSiteType(props.site_type);
-        const isNationalMonument = props.is_national_monument || props.national_monument;
 
         // Get coordinates from geometry if available, otherwise from properties
         let lat = null, lon = null;
@@ -650,19 +683,11 @@
         html += `<div class="popup-meta">`;
 
         if (props.county_name) {
-            html += `<span class="popup-meta-item"><span class="meta-icon">📍</span>${escapeHtml(props.county_name)}</span>`;
+            html += `<span class="popup-meta-item"><span class="meta-icon">${ICONS.pin}</span>${escapeHtml(props.county_name)}</span>`;
         }
 
         if (props.era_name) {
-            html += `<span class="popup-meta-item"><span class="meta-icon">🏛️</span>${escapeHtml(props.era_name)}</span>`;
-        }
-
-        if (props.significance_level) {
-            html += `<span class="popup-meta-item"><span class="meta-icon">⭐</span>Significance: ${escapeHtml(String(props.significance_level))}</span>`;
-        }
-
-        if (isNationalMonument) {
-            html += `<span class="popup-meta-item national-monument"><span class="meta-icon">🏆</span>National Monument</span>`;
+            html += `<span class="popup-meta-item"><span class="meta-icon">${ICONS.era}</span>${escapeHtml(props.era_name)}</span>`;
         }
 
         html += `</div>`;
@@ -671,9 +696,30 @@
         if (lat !== null && lon !== null) {
             html += `
                 <div class="popup-coords">
-                    <span class="meta-icon">🧭</span>
+                    <span class="meta-icon">${ICONS.compass}</span>
                     <span class="coord-label">Coordinates:</span>
                     <span class="coord-value">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>
+                </div>
+            `;
+
+            // Directions button - opens Google Maps
+            const encodedName = encodeURIComponent(name);
+            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&destination_place_id=${encodedName}`;
+            
+            html += `
+                <div class="popup-directions">
+                    <button
+                        class="btn-directions"
+                        onclick="window.openDirections(${lat}, ${lon}, '${escapeHtml(name).replace(/'/g, "\\'")}'); return false;"
+                        title="Get directions to this site"
+                    >
+                        <span class="btn-icon">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                                <path d="M21.71 11.29l-9-9a.996.996 0 00-1.41 0l-9 9a.996.996 0 000 1.41l9 9c.39.39 1.02.39 1.41 0l9-9a.996.996 0 000-1.41zM14 14.5V12h-4v3H8v-4c0-.55.45-1 1-1h5V7.5l3.5 3.5-3.5 3.5z"/>
+                            </svg>
+                        </span>
+                        <span class="btn-text">Get Directions</span>
+                    </button>
                 </div>
             `;
         }
@@ -687,7 +733,7 @@
                         data-site-id="${props.id}"
                         onclick="window.addToJourney(${props.id}, '${escapeHtml(name)}', 'wishlist')"
                     >
-                        <span class="btn-icon">⭐</span>
+                        <span class="btn-icon">${ICONS.starOutline}</span>
                         <span class="btn-text">Add to Wishlist</span>
                     </button>
                     <button
@@ -695,7 +741,7 @@
                         data-site-id="${props.id}"
                         onclick="window.addToJourney(${props.id}, '${escapeHtml(name)}', 'visited')"
                     >
-                        <span class="btn-icon">✓</span>
+                        <span class="btn-icon">${ICONS.check}</span>
                         <span class="btn-text">Mark as Visited</span>
                     </button>
                     <button
@@ -704,7 +750,7 @@
                         onclick="window.removeFromJourney(${props.id}, '${escapeHtml(name)}')"
                         style="display: none;"
                     >
-                        <span class="btn-icon">✕</span>
+                        <span class="btn-icon">${ICONS.close}</span>
                         <span class="btn-text">Remove from Journey</span>
                     </button>
                     <div class="journey-loading" data-site-id="${props.id}" style="display: none;">
@@ -893,7 +939,7 @@
             coordsControl.onAdd = function() {
                 const div = L.DomUtil.create('div', 'coords-panel');
                 div.innerHTML = `
-                    <div class="coords-title">📍 Coordinates</div>
+                    <div class="coords-title"><span class="coords-icon">${ICONS.pin}</span> Coordinates</div>
                     <div class="coords-values">
                         <div class="coord-row">
                             <span class="coord-label">Lat:</span>
@@ -988,6 +1034,7 @@
      * Toggle measurement tool
      */
     let drawControl = null;
+    let activeDrawHandler = null;
 
     function toggleMeasurementTool() {
         measurementActive = !measurementActive;
@@ -1045,14 +1092,37 @@
             });
             map.addControl(drawControl);
 
-            showToast('Measurement tool enabled - draw shapes on map', 'info');
+            // Automatically start polyline (distance) drawing mode
+            activeDrawHandler = new L.Draw.Polyline(map, {
+                shapeOptions: {
+                    color: CONFIG.defaultColor,
+                    weight: 4
+                },
+                metric: true,
+                feet: false
+            });
+            activeDrawHandler.enable();
+
+            // Set cursor to crosshair to indicate drawing mode
+            map.getContainer().style.cursor = 'crosshair';
+
+            showToast('Click on map to start measuring distance. Double-click to finish.', 'info');
         } else {
             btn?.classList.remove('active');
+
+            // Disable active draw handler
+            if (activeDrawHandler) {
+                activeDrawHandler.disable();
+                activeDrawHandler = null;
+            }
 
             if (drawControl) {
                 map.removeControl(drawControl);
                 drawControl = null;
             }
+
+            // Reset cursor
+            map.getContainer().style.cursor = '';
 
             showToast('Measurement tool disabled', 'info');
         }
@@ -1091,7 +1161,7 @@
         const marker = L.marker([lat, lng], {
             icon: L.divIcon({
                 className: 'user-marker',
-                html: `<div class="user-marker-icon">📌</div>`,
+                html: `<div class="user-marker-icon">${ICONS.pushpin}</div>`,
                 iconSize: [30, 30],
                 iconAnchor: [15, 30]
             }),
@@ -1105,7 +1175,7 @@
                 Lat: ${lat.toFixed(6)}<br>
                 Lng: ${lng.toFixed(6)}<br>
                 <button class="btn btn-small btn-delete" onclick="window.IrishGIS.map.removeMarker(this)">
-                    🗑️ Remove
+                    <span class="btn-trash-icon">${ICONS.trash}</span> Remove
                 </button>
             </div>
         `;
@@ -1119,7 +1189,7 @@
                     Lat: ${newPos.lat.toFixed(6)}<br>
                     Lng: ${newPos.lng.toFixed(6)}<br>
                     <button class="btn btn-small btn-delete" onclick="window.IrishGIS.map.removeMarker(this)">
-                        🗑️ Remove
+                        <span class="btn-trash-icon">${ICONS.trash}</span> Remove
                     </button>
                 </div>
             `);
@@ -1432,6 +1502,11 @@
         if (currentTool !== 'measure' && measurementActive) {
             measurementActive = false;
             document.getElementById('measureBtn')?.classList.remove('active');
+            // Disable active draw handler
+            if (activeDrawHandler) {
+                activeDrawHandler.disable();
+                activeDrawHandler = null;
+            }
             if (drawControl) {
                 map.removeControl(drawControl);
                 drawControl = null;
@@ -1576,8 +1651,9 @@
 
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
+        const toastIcon = type === 'success' ? ICONS.success : type === 'error' ? ICONS.error : type === 'warning' ? ICONS.warning : ICONS.info;
         toast.innerHTML = `
-            <span class="toast-icon">${type === 'success' ? '✓' : type === 'error' ? '✕' : type === 'warning' ? '⚠' : 'ℹ'}</span>
+            <span class="toast-icon">${toastIcon}</span>
             <span class="toast-message">${message}</span>
         `;
 
@@ -1847,6 +1923,23 @@
             if (loading) loading.style.display = 'none';
             if (removeBtn) removeBtn.style.display = 'flex';
         }
+    };
+
+    /**
+     * Open Google Maps directions to a location
+     * This is FREE - uses URL deep linking, no API key required
+     */
+    window.openDirections = function(lat, lon, placeName) {
+        // Construct Google Maps directions URL
+        // destination_place_id helps Google identify the location
+        const encodedName = encodeURIComponent(placeName || '');
+        const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}&travelmode=driving`;
+        
+        // Open in new tab (works on desktop)
+        // On mobile devices, this will open the Google Maps app if installed
+        window.open(directionsUrl, '_blank', 'noopener,noreferrer');
+        
+        showToast('Opening Google Maps directions...', 'info');
     };
 
     /**

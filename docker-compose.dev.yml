@@ -1,0 +1,33 @@
+# Development Docker Compose - PGAdmin Only
+# Use this to add PGAdmin to your existing local PostgreSQL setup
+
+version: '3.9'
+
+services:
+  # PGAdmin - Web-based PostgreSQL Admin Tool
+  # Access at: http://localhost:5050
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: irish_geo_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@irishgeo.local
+      PGADMIN_DEFAULT_PASSWORD: admin123
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_CONFIG_MASTER_PASSWORD_REQUIRED: "False"
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro
+    ports:
+      - "5050:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - pgadmin_network
+
+volumes:
+  pgadmin_data:
+
+networks:
+  pgadmin_network:
+    driver: bridge
+

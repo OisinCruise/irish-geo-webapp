@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Journey Stats Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .test-card {
+            border: 2px solid green;
+            padding: 20px;
+            margin: 20px 0;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+        }
+        .test-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #1a5f4a;
+        }
+    </style>
+</head>
+<body>
+    <h1>Journey Stats Test Page</h1>
+    <p>If you can see this page with styled cards below, CSS is working!</p>
+
+    <div class="test-card">
+        <div class="test-number">42</div>
+        <div>Test Stat Card</div>
+    </div>
+
+    <hr>
+
+    <h2>JavaScript Test</h2>
+    <p id="js-test">JavaScript NOT loaded</p>
+
+    <script>
+        document.getElementById('js-test').textContent = 'JavaScript IS working!';
+        document.getElementById('js-test').style.color = 'green';
+        console.log('Test page JavaScript loaded successfully');
+    </script>
+</body>
+</html>

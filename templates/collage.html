@@ -160,6 +160,45 @@
     transform-origin: center center;
 }
 
+.polaroid-upload-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    height: 200px;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity var(--transition-fast);
+    z-index: 5;
+}
+
+.polaroid:hover .polaroid-upload-overlay {
+    opacity: 1;
+}
+
+.upload-btn {
+    background: var(--color-accent);
+    color: white;
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-md);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+}
+
+.upload-btn:hover {
+    background: var(--color-accent-dark);
+    transform: scale(1.05);
+}
+
 /* Random rotations for natural look */
 .polaroid:nth-child(4n+1) { transform: rotate(-2deg); }
 .polaroid:nth-child(4n+2) { transform: rotate(1.5deg); }
@@ -542,6 +581,69 @@
         </div>
     </div>
 </div>
+
+<!-- Upload Modal -->
+<div class="photo-modal" id="uploadModal" style="display: none;">
+    <div class="modal-content" style="max-width: 500px;">
+        <button class="modal-close" onclick="closeUploadModal()">&times;</button>
+        <div class="modal-details">
+            <h2 class="modal-site-name" id="uploadSiteName"></h2>
+            <form id="uploadForm" enctype="multipart/form-data" style="margin-top: 20px;">
+                <input type="hidden" id="uploadItemId" name="item_id">
+
+                <div style="margin-bottom: 15px;">
+                    <label for="photoInput" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                        📷 Upload Photo
+                    </label>
+                    <input
+                        type="file"
+                        id="photoInput"
+                        name="photo"
+                        accept="image/*"
+                        required
+                        style="width: 100%; padding: 8px; border: 2px dashed var(--border-color); border-radius: var(--radius-md);"
+                    >
+                    <small style="color: var(--text-muted);">Max size: 5MB. Formats: JPG, PNG, GIF</small>
+                </div>
+
+                <div style="margin-bottom: 15px;">
+                    <label for="captionInput" style="display: block; margin-bottom: 8px; font-weight: 600;">
+                        ✍️ Add a Caption (Optional)
+                    </label>
+                    <textarea
+                        id="captionInput"
+                        name="photo_caption"
+                        rows="3"
+                        placeholder="Share your memory of this place..."
+                        style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-md); resize: vertical; font-family: inherit;"
+                    ></textarea>
+                </div>
+
+                <div style="display: flex; gap: 10px;">
+                    <button
+                        type="submit"
+                        class="btn btn-accent"
+                        style="flex: 1;"
+                    >
+                        Upload Photo
+                    </button>
+                    <button
+                        type="button"
+                        class="btn btn-outline"
+                        onclick="closeUploadModal()"
+                    >
+                        Cancel
+                    </button>
+                </div>
+
+                <div id="uploadProgress" style="display: none; margin-top: 15px; text-align: center;">
+                    <div class="loading-spinner-large"></div>
+                    <p style="margin-top: 10px; color: var(--text-muted);">Uploading...</p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -669,13 +771,23 @@ function renderCollageGrid(items) {
 function createPolaroidCard(item, index) {
     const card = document.createElement('div');
     card.className = 'polaroid';
-    card.onclick = () => openModal(item);
 
     const site = item.site || {};
     const hasPhoto = item.photo && item.photo !== '';
     const visitedDate = item.visited_at ? new Date(item.visited_at).toLocaleDateString() : '';
 
     card.innerHTML = `
+        ${!hasPhoto ? `
+        <div class="polaroid-upload-overlay">
+            <button
+                class="upload-btn"
+                onclick="event.stopPropagation(); openUploadModal(${item.id}, '${site.name_en || 'Unknown Site'}')"
+            >
+                <span>📷</span>
+                <span>Upload Photo</span>
+            </button>
+        </div>
+        ` : ''}
         <div class="polaroid-image">
             ${hasPhoto
                 ? `<img src="${item.photo}" alt="${site.name_en || 'Site photo'}" loading="lazy">`
@@ -691,6 +803,11 @@ function createPolaroidCard(item, index) {
             </div>
         </div>
     `;
+
+    // Only add click handler if there's a photo (for viewing)
+    if (hasPhoto) {
+        card.onclick = () => openModal(item);
+    }
 
     return card;
 }
@@ -737,5 +854,133 @@ document.getElementById('photoModal').addEventListener('click', function(e) {
 document.querySelector('.filter-btn[data-filter="all"]').onclick = function() {
     filterByCounty('all', this);
 };
+
+// ==============================================================================
+// IMAGE UPLOAD FUNCTIONALITY
+// ==============================================================================
+
+// Open upload modal
+function openUploadModal(itemId, siteName) {
+    const modal = document.getElementById('uploadModal');
+    document.getElementById('uploadItemId').value = itemId;
+    document.getElementById('uploadSiteName').textContent = siteName;
+    document.getElementById('photoInput').value = '';
+    document.getElementById('captionInput').value = '';
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+// Close upload modal
+function closeUploadModal() {
+    document.getElementById('uploadModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// Get CSRF token from meta tag or cookie
+function getCsrfToken() {
+    // First try to get from meta tag
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    if (metaTag && metaTag.content) {
+        return metaTag.content;
+    }
+    
+    // Then try the hidden input
+    const csrfInput = document.querySelector('input[name="csrfmiddlewaretoken"]');
+    if (csrfInput && csrfInput.value) {
+        return csrfInput.value;
+    }
+
+    // Fallback to cookie
+    const name = 'csrftoken';
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Handle upload form submission
+document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const itemId = document.getElementById('uploadItemId').value;
+    const photoInput = document.getElementById('photoInput');
+    const caption = document.getElementById('captionInput').value;
+    const progress = document.getElementById('uploadProgress');
+
+    if (!photoInput.files || photoInput.files.length === 0) {
+        alert('Please select a photo to upload');
+        return;
+    }
+
+    const file = photoInput.files[0];
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+        alert('File size must be less than 5MB');
+        return;
+    }
+
+    // Show progress
+    progress.style.display = 'block';
+
+    try {
+        // Create FormData for file upload
+        const formData = new FormData();
+        formData.append('photo', file);
+        if (caption) {
+            formData.append('photo_caption', caption);
+        }
+
+        // Upload using PATCH request
+        const response = await fetch(`/api/v1/bucket-list/${itemId}/`, {
+            method: 'PATCH',
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: formData
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Upload failed');
+        }
+
+        // Success! Close modal and reload page
+        closeUploadModal();
+        alert('Photo uploaded successfully!');
+
+        // Reload the page to show the new photo
+        location.reload();
+
+    } catch (error) {
+        console.error('Upload error:', error);
+        alert('Failed to upload photo: ' + error.message);
+        progress.style.display = 'none';
+    }
+});
+
+// Close modals on escape key
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeModal();
+        closeUploadModal();
+    }
+});
+
+// Close upload modal on background click
+document.getElementById('uploadModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+        closeUploadModal();
+    }
+});
 </script>
 {% endblock %}

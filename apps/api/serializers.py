@@ -178,12 +178,20 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
     site_type_display = serializers.CharField(
         source='get_site_type_display', read_only=True
     )
+    primary_image_url = serializers.SerializerMethodField()
 
     def get_county_name(self, obj):
         return obj.county.name_en if obj.county else None
 
     def get_era_name(self, obj):
         return obj.era.name_en if obj.era else None
+
+    def get_primary_image_url(self, obj):
+        primary = obj.images.filter(is_primary=True, is_deleted=False).first()
+        if primary:
+            return primary.image_url
+        first = obj.images.filter(is_deleted=False).first()
+        return first.image_url if first else None
     
     class Meta:
         model = HistoricalSite
@@ -192,7 +200,8 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
             'id', 'name_en', 'name_ga', 'site_type', 'site_type_display',
             'significance_level', 'national_monument',
             'county_name', 'era_name',
-            'description_en', 'description_ga'
+            'description_en', 'description_ga',
+            'primary_image_url'
         ]
 
 

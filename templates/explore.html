@@ -4,7 +4,6 @@
 {% block title %}Explore Map{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/components.css' %}">
 <style>
     /* Override footer for map page */
     .footer { display: none; }
@@ -238,7 +237,7 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/map.js' %}?v=2"></script>
+<script src="{% static 'js/map.js' %}?v=7"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     // Close sidebar button

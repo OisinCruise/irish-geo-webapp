@@ -1,0 +1,25 @@
+{
+    "Servers": {
+        "1": {
+            "Name": "Irish Historical Sites DB (Local)",
+            "Group": "Irish GIS Project",
+            "Host": "host.docker.internal",
+            "Port": 5432,
+            "MaintenanceDB": "irish_geo_db",
+            "Username": "geo_user",
+            "SSLMode": "prefer",
+            "Comment": "Local PostgreSQL/PostGIS Database - Irish Historical Sites GIS"
+        },
+        "2": {
+            "Name": "Irish Historical Sites DB (Docker)",
+            "Group": "Irish GIS Project",
+            "Host": "db",
+            "Port": 5432,
+            "MaintenanceDB": "irish_geo_db",
+            "Username": "geo_user",
+            "SSLMode": "prefer",
+            "Comment": "Docker PostgreSQL/PostGIS Database - Use with full docker-compose.yml"
+        }
+    }
+}
+

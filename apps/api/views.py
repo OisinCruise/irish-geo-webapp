@@ -457,12 +457,17 @@ class BucketListViewSet(viewsets.ModelViewSet):
     - `POST /api/v1/bucket-list/{id}/mark_visited/` - Mark site as visited
     - `GET /api/v1/bucket-list/statistics/` - Get bucket list statistics
     """
+    from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
+    from rest_framework.permissions import AllowAny
+    
     serializer_class = BucketListItemSerializer
     pagination_class = StandardResultsPagination
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['status']
     ordering_fields = ['added_at', 'visited_at', 'status']
     ordering = ['-added_at']
+    parser_classes = [MultiPartParser, FormParser, JSONParser]
+    permission_classes = [AllowAny]
 
     def get_session_key(self, request):
         """Get or create session key for user tracking"""
@@ -538,6 +543,39 @@ class BucketListViewSet(viewsets.ModelViewSet):
 
         result_serializer = BucketListItemSerializer(item)
         return Response(result_serializer.data, status=status.HTTP_201_CREATED)
+
+    @extend_schema(
+        request=BucketListUpdateSerializer,
+        responses={200: BucketListItemSerializer},
+        description='Update bucket list item (photo upload, caption, status)'
+    )
+    def partial_update(self, request, *args, **kwargs):
+        """
+        Update a bucket list item
+        
+        Handles photo uploads and caption updates.
+        """
+        item = self.get_object()
+        from django.utils import timezone
+        
+        # Handle photo upload
+        if 'photo' in request.FILES:
+            item.photo = request.FILES['photo']
+        
+        # Handle caption update
+        if 'photo_caption' in request.data:
+            item.photo_caption = request.data['photo_caption']
+        
+        # Handle status update
+        if 'status' in request.data:
+            item.status = request.data['status']
+            if request.data['status'] == 'visited' and not item.visited_at:
+                item.visited_at = timezone.now()
+        
+        item.save()
+        
+        serializer = BucketListItemSerializer(item)
+        return Response(serializer.data)
 
     @extend_schema(
         responses={204: None},

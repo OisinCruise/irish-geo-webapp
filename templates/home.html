@@ -127,23 +127,41 @@
     margin: 0 auto;
 }
 
-/* Journey Stats Grid */
+/* Journey Stats Grid - Fitness Style */
 .journey-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: var(--spacing-lg);
-    max-width: 900px;
+    max-width: 1000px;
     margin: 0 auto var(--spacing-xl);
 }
 
 .journey-stat-card {
-    background: var(--bg-card);
+    background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-secondary) 100%);
     border-radius: var(--radius-lg);
     padding: var(--spacing-lg);
-    text-align: center;
     box-shadow: var(--shadow-md);
     transition: all var(--transition-normal);
     border: 2px solid transparent;
+    position: relative;
+    overflow: hidden;
+}
+
+.journey-stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.8s ease-out;
+}
+
+.journey-stat-card.loaded::before {
+    transform: scaleX(1);
 }
 
 .journey-stat-card:hover {
@@ -152,35 +170,98 @@
     box-shadow: var(--shadow-lg);
 }
 
+.stat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
 .stat-icon {
-    width: 60px;
-    height: 60px;
-    margin: 0 auto var(--spacing-md);
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.8rem;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    animation: iconPulse 2s ease-in-out infinite;
+}
+
+@keyframes iconPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
 }
 
 .stat-icon.wishlist { background: linear-gradient(135deg, #ff8c00, #ffa333); }
 .stat-icon.visited { background: linear-gradient(135deg, #2d8659, #1a5f4a); }
 .stat-icon.counties { background: linear-gradient(135deg, #3498db, #2980b9); }
 
+.stat-trend {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 4px 8px;
+    border-radius: var(--radius-full);
+    background: rgba(45, 134, 89, 0.1);
+    color: #2d8659;
+}
+
+.stat-body {
+    text-align: center;
+}
+
 .journey-stat-number {
-    font-size: 2.5rem;
+    font-size: 3rem;
     font-weight: bold;
     background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    line-height: 1;
+    margin-bottom: var(--spacing-xs);
+    display: inline-block;
+    animation: countAppear 0.6s ease-out;
+}
+
+@keyframes countAppear {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .journey-stat-label {
-    color: var(--text-muted);
-    font-size: 0.9rem;
+    color: var(--text-secondary);
+    font-size: 0.85rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+}
+
+.stat-progress-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: var(--spacing-sm);
+}
+
+.stat-progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+    border-radius: var(--radius-full);
+    transition: width 1s ease-out;
+    width: 0%;
+}
+
+.stat-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: var(--spacing-xs);
 }
 
 /* Progress Section */
@@ -642,22 +723,58 @@
         </p>
     </div>
 
-    <!-- Journey Stats -->
+    <!-- Journey Stats - Fitness Style -->
     <div class="journey-stats">
         <div class="journey-stat-card">
-            <div class="stat-icon wishlist">&#9733;</div>
-            <div class="journey-stat-number" id="wishlistCount">0</div>
-            <div class="journey-stat-label" data-en="On Wishlist" data-ga="Ar Liosta Mian">On Wishlist</div>
+            <div class="stat-header">
+                <div class="stat-icon wishlist">&#9733;</div>
+                <div class="stat-trend" id="wishlistTrend" style="display: none;">
+                    <span>↑</span>
+                    <span id="wishlistChange">+0</span>
+                </div>
+            </div>
+            <div class="stat-body">
+                <div class="journey-stat-label" data-en="On Wishlist" data-ga="Ar Liosta Mian">On Wishlist</div>
+                <div class="journey-stat-number" id="wishlistCount">0</div>
+                <div class="stat-progress-bar">
+                    <div class="stat-progress-fill" id="wishlistProgress"></div>
+                </div>
+                <div class="stat-subtitle" data-en="Sites to explore" data-ga="Suíomhanna le taiscéaladh">Sites to explore</div>
+            </div>
         </div>
         <div class="journey-stat-card">
-            <div class="stat-icon visited">&#10004;</div>
-            <div class="journey-stat-number" id="visitedCount">0</div>
-            <div class="journey-stat-label" data-en="Sites Visited" data-ga="Suíomhanna Tugtha Cuairt">Sites Visited</div>
+            <div class="stat-header">
+                <div class="stat-icon visited">&#10004;</div>
+                <div class="stat-trend" id="visitedTrend" style="display: none;">
+                    <span>↑</span>
+                    <span id="visitedChange">+0</span>
+                </div>
+            </div>
+            <div class="stat-body">
+                <div class="journey-stat-label" data-en="Sites Visited" data-ga="Suíomhanna Tugtha Cuairt">Sites Visited</div>
+                <div class="journey-stat-number" id="visitedCount">0</div>
+                <div class="stat-progress-bar">
+                    <div class="stat-progress-fill" id="visitedProgress"></div>
+                </div>
+                <div class="stat-subtitle" data-en="Journey complete" data-ga="Turas críochnaithe">Journey complete</div>
+            </div>
         </div>
         <div class="journey-stat-card">
-            <div class="stat-icon counties">&#9873;</div>
-            <div class="journey-stat-number" id="countiesCount">0</div>
-            <div class="journey-stat-label" data-en="Counties Explored" data-ga="Contaetha Taiscéalta">Counties Explored</div>
+            <div class="stat-header">
+                <div class="stat-icon counties">&#127758;</div>
+                <div class="stat-trend" id="countiesTrend" style="display: none;">
+                    <span>↑</span>
+                    <span id="countiesChange">+0</span>
+                </div>
+            </div>
+            <div class="stat-body">
+                <div class="journey-stat-label" data-en="Counties Explored" data-ga="Contaetha Taiscéalta">Counties Explored</div>
+                <div class="journey-stat-number" id="countiesCount">0</div>
+                <div class="stat-progress-bar">
+                    <div class="stat-progress-fill" id="countiesProgress"></div>
+                </div>
+                <div class="stat-subtitle" data-en="of 26 counties" data-ga="as 26 contae">of 26 counties</div>
+            </div>
         </div>
     </div>
 
@@ -820,6 +937,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Animate stats on scroll
     observeStatsSection();
+
+    // Listen for journey updates from other pages (e.g., map page)
+    window.addEventListener('journeyUpdated', function() {
+        console.log('Journey updated - refreshing stats');
+        fetchJourneyStats();
+    });
+
+    // Listen for storage events (updates from other tabs)
+    window.addEventListener('storage', function(e) {
+        if (e.key === 'journeyUpdated') {
+            console.log('Journey updated in another tab - refreshing stats');
+            fetchJourneyStats();
+        }
+    });
 });
 
 // Fetch journey statistics from API
@@ -863,6 +994,26 @@ function updateJourneyDashboard(stats) {
     animateNumber('visitedCount', visited);
     animateNumber('countiesCount', counties);
 
+    // Update progress bars - Fitness style
+    setTimeout(() => {
+        // Wishlist progress (out of total)
+        const wishlistPercent = total > 0 ? (wishlist / total) * 100 : 0;
+        document.getElementById('wishlistProgress').style.width = wishlistPercent + '%';
+
+        // Visited progress (out of total)
+        const visitedPercent = total > 0 ? (visited / total) * 100 : 0;
+        document.getElementById('visitedProgress').style.width = visitedPercent + '%';
+
+        // Counties progress (out of 26 counties)
+        const countiesPercent = (counties / 26) * 100;
+        document.getElementById('countiesProgress').style.width = countiesPercent + '%';
+
+        // Add loaded class for top bar animation
+        document.querySelectorAll('.journey-stat-card').forEach(card => {
+            card.classList.add('loaded');
+        });
+    }, 100);
+
     // Update progress ring
     const progress = total > 0 ? Math.round((visited / total) * 100) : 0;
     updateProgressRing(progress);
@@ -871,6 +1022,11 @@ function updateJourneyDashboard(stats) {
     document.getElementById('recentItemsSection').style.display = 'block';
     document.getElementById('journeyProgress').style.display = 'block';
     document.getElementById('emptyJourney').style.display = 'none';
+
+    // Store stats for comparison (for trend indicators)
+    sessionStorage.setItem('lastJourneyStats', JSON.stringify({
+        wishlist, visited, counties, timestamp: Date.now()
+    }));
 }
 
 // Show empty journey state

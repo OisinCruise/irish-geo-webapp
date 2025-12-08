@@ -152,6 +152,7 @@
         // Set up event listeners
         setupEventListeners();
         setupToolbarButtons();
+        setupPopupListeners();
 
         console.log('Irish Historical Sites Map initialized');
     }
@@ -539,6 +540,12 @@
         const props = feature.properties;
         const lang = getCurrentLang();
 
+        // GeoJSON puts 'id' at the feature level, not in properties
+        // Copy it to props so createPopupContent can access it
+        if (feature.id && !props.id) {
+            props.id = feature.id;
+        }
+
         // Extract coordinates from geometry if available
         if (feature.geometry && feature.geometry.coordinates) {
             props.geometry = feature.geometry;
@@ -603,11 +610,41 @@
                 </div>
         `;
 
+        // Site image (from Wikimedia or local storage)
+        if (props.primary_image_url) {
+            html += `
+                <div class="popup-image-container">
+                    <img 
+                        src="${escapeHtml(props.primary_image_url)}" 
+                        alt="${escapeHtml(name)}"
+                        class="popup-site-image"
+                        loading="lazy"
+                        onerror="this.parentElement.style.display='none'"
+                    />
+                </div>
+            `;
+        }
+
         if (description) {
-            const truncatedDesc = description.length > 200
-                ? description.substring(0, 200) + '...'
+            const needsTruncation = description.length > 200;
+            const truncatedDesc = needsTruncation
+                ? description.substring(0, 200)
                 : description;
-            html += `<p class="popup-description">${escapeHtml(truncatedDesc)}</p>`;
+            
+            if (needsTruncation) {
+                const uniqueId = `desc-${props.id || Date.now()}`;
+                html += `
+                    <div class="popup-description-container">
+                        <p class="popup-description" id="${uniqueId}-short">${escapeHtml(truncatedDesc)}<span class="description-ellipsis">...</span></p>
+                        <p class="popup-description popup-description-full" id="${uniqueId}-full" style="display: none;">${escapeHtml(description)}</p>
+                        <button class="btn-expand-desc" onclick="window.toggleDescription('${uniqueId}')" data-expanded="false">
+                            <span class="expand-text">Read more</span>
+                        </button>
+                    </div>
+                `;
+            } else {
+                html += `<p class="popup-description">${escapeHtml(description)}</p>`;
+            }
         }
 
         html += `<div class="popup-meta">`;
@@ -637,6 +674,42 @@
                     <span class="meta-icon">🧭</span>
                     <span class="coord-label">Coordinates:</span>
                     <span class="coord-value">${lat.toFixed(6)}, ${lon.toFixed(6)}</span>
+                </div>
+            `;
+        }
+
+        // Journey buttons (Add to Journey / Remove from Journey)
+        if (props.id) {
+            html += `
+                <div class="popup-journey-actions">
+                    <button
+                        class="btn-journey-add"
+                        data-site-id="${props.id}"
+                        onclick="window.addToJourney(${props.id}, '${escapeHtml(name)}', 'wishlist')"
+                    >
+                        <span class="btn-icon">⭐</span>
+                        <span class="btn-text">Add to Wishlist</span>
+                    </button>
+                    <button
+                        class="btn-journey-visited"
+                        data-site-id="${props.id}"
+                        onclick="window.addToJourney(${props.id}, '${escapeHtml(name)}', 'visited')"
+                    >
+                        <span class="btn-icon">✓</span>
+                        <span class="btn-text">Mark as Visited</span>
+                    </button>
+                    <button
+                        class="btn-journey-remove"
+                        data-site-id="${props.id}"
+                        onclick="window.removeFromJourney(${props.id}, '${escapeHtml(name)}')"
+                        style="display: none;"
+                    >
+                        <span class="btn-icon">✕</span>
+                        <span class="btn-text">Remove from Journey</span>
+                    </button>
+                    <div class="journey-loading" data-site-id="${props.id}" style="display: none;">
+                        <span class="loading-spinner-small"></span>
+                    </div>
                 </div>
             `;
         }
@@ -1603,6 +1676,250 @@
         loadSites();
 
         showToast('Filters cleared', 'info');
+    }
+
+    // ===========================================================================
+    // JOURNEY MANAGEMENT (Bucket List)
+    // ===========================================================================
+
+    /**
+     * Check journey status for a site and update popup buttons
+     */
+    async function checkJourneyStatus(siteId) {
+        try {
+            const response = await fetch('/api/v1/bucket-list/');
+            if (!response.ok) return null;
+
+            const data = await response.json();
+            const items = data.results || data || [];
+            const item = items.find(i => i.site && i.site.id == siteId);
+
+            return item || null;
+        } catch (error) {
+            console.error('Error checking journey status:', error);
+            return null;
+        }
+    }
+
+    /**
+     * Update popup button visibility based on journey status
+     */
+    function updatePopupButtons(siteId, journeyItem) {
+        const addBtn = document.querySelector(`.btn-journey-add[data-site-id="${siteId}"]`);
+        const visitedBtn = document.querySelector(`.btn-journey-visited[data-site-id="${siteId}"]`);
+        const removeBtn = document.querySelector(`.btn-journey-remove[data-site-id="${siteId}"]`);
+        const loading = document.querySelector(`.journey-loading[data-site-id="${siteId}"]`);
+
+        // Always hide loading spinner when updating buttons
+        if (loading) loading.style.display = 'none';
+
+        if (!addBtn || !visitedBtn || !removeBtn) return;
+
+        if (!journeyItem) {
+            // Not in journey - show add buttons
+            addBtn.style.display = 'flex';
+            visitedBtn.style.display = 'flex';
+            removeBtn.style.display = 'none';
+        } else {
+            // Already in journey - show remove button
+            addBtn.style.display = 'none';
+            visitedBtn.style.display = 'none';
+            removeBtn.style.display = 'flex';
+
+            // Update remove button text based on status
+            const btnText = removeBtn.querySelector('.btn-text');
+            if (btnText) {
+                btnText.textContent = journeyItem.status === 'visited'
+                    ? 'Remove from Visited'
+                    : 'Remove from Wishlist';
+            }
+        }
+    }
+
+    /**
+     * Add site to journey (wishlist or visited)
+     */
+    window.addToJourney = async function(siteId, siteName, status = 'wishlist') {
+        const loading = document.querySelector(`.journey-loading[data-site-id="${siteId}"]`);
+        const addBtn = document.querySelector(`.btn-journey-add[data-site-id="${siteId}"]`);
+        const visitedBtn = document.querySelector(`.btn-journey-visited[data-site-id="${siteId}"]`);
+
+        // Show loading spinner
+        if (loading) loading.style.display = 'flex';
+        if (addBtn) addBtn.style.display = 'none';
+        if (visitedBtn) visitedBtn.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/v1/bucket-list/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': getCsrfToken()
+                },
+                body: JSON.stringify({
+                    site_id: siteId,
+                    status: status
+                })
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                if (error.error && error.error.includes('already in bucket list')) {
+                    showToast('Site already in your journey', 'info');
+                } else {
+                    throw new Error('Failed to add to journey');
+                }
+            } else {
+                const statusText = status === 'visited' ? 'Visited' : 'Wishlist';
+                showToast(`Added to ${statusText}!`, 'success');
+
+                // Trigger stats update event (for same page)
+                window.dispatchEvent(new CustomEvent('journeyUpdated'));
+
+                // Trigger storage event (for other tabs)
+                localStorage.setItem('journeyUpdated', Date.now().toString());
+            }
+
+            // Refresh button state
+            const item = await checkJourneyStatus(siteId);
+            updatePopupButtons(siteId, item);
+
+        } catch (error) {
+            console.error('Error adding to journey:', error);
+            showToast('Failed to add to journey', 'error');
+
+            // Reset buttons
+            if (loading) loading.style.display = 'none';
+            if (addBtn) addBtn.style.display = 'flex';
+            if (visitedBtn) visitedBtn.style.display = 'flex';
+        }
+    };
+
+    /**
+     * Remove site from journey
+     */
+    window.removeFromJourney = async function(siteId, siteName) {
+        const loading = document.querySelector(`.journey-loading[data-site-id="${siteId}"]`);
+        const removeBtn = document.querySelector(`.btn-journey-remove[data-site-id="${siteId}"]`);
+
+        // Show loading spinner
+        if (loading) loading.style.display = 'flex';
+        if (removeBtn) removeBtn.style.display = 'none';
+
+        try {
+            // First get the bucket list item ID
+            const journeyItem = await checkJourneyStatus(siteId);
+            if (!journeyItem) {
+                showToast('Site not found in journey', 'error');
+                // Hide loading and show button again
+                if (loading) loading.style.display = 'none';
+                if (removeBtn) removeBtn.style.display = 'flex';
+                return;
+            }
+
+            const response = await fetch(`/api/v1/bucket-list/${journeyItem.id}/`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to remove from journey');
+            }
+
+            showToast('Removed from journey', 'success');
+
+            // Trigger stats update event (for same page)
+            window.dispatchEvent(new CustomEvent('journeyUpdated'));
+
+            // Trigger storage event (for other tabs)
+            localStorage.setItem('journeyUpdated', Date.now().toString());
+
+            // Refresh button state (this will also hide loading)
+            updatePopupButtons(siteId, null);
+
+        } catch (error) {
+            console.error('Error removing from journey:', error);
+            showToast('Failed to remove from journey', 'error');
+
+            // Reset buttons
+            if (loading) loading.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'flex';
+        }
+    };
+
+    /**
+     * Toggle description expand/collapse
+     */
+    window.toggleDescription = function(uniqueId) {
+        const shortDesc = document.getElementById(`${uniqueId}-short`);
+        const fullDesc = document.getElementById(`${uniqueId}-full`);
+        const btn = shortDesc?.parentElement?.querySelector('.btn-expand-desc');
+        
+        if (!shortDesc || !fullDesc || !btn) return;
+        
+        const isExpanded = btn.getAttribute('data-expanded') === 'true';
+        
+        if (isExpanded) {
+            // Collapse
+            shortDesc.style.display = 'block';
+            fullDesc.style.display = 'none';
+            btn.setAttribute('data-expanded', 'false');
+            btn.querySelector('.expand-text').textContent = 'Read more';
+        } else {
+            // Expand
+            shortDesc.style.display = 'none';
+            fullDesc.style.display = 'block';
+            btn.setAttribute('data-expanded', 'true');
+            btn.querySelector('.expand-text').textContent = 'Show less';
+        }
+    };
+
+    /**
+     * Get CSRF token from cookie or meta tag
+     */
+    function getCsrfToken() {
+        // First try to get from meta tag
+        const metaTag = document.querySelector('meta[name="csrf-token"]');
+        if (metaTag && metaTag.content) {
+            return metaTag.content;
+        }
+
+        // Fallback to cookie
+        const name = 'csrftoken';
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    /**
+     * Listen for popup open events to check journey status
+     */
+    function setupPopupListeners() {
+        if (map) {
+            map.on('popupopen', async function(e) {
+                const popup = e.popup;
+                const content = popup.getContent();
+
+                // Extract site ID from popup content
+                const match = content.match(/data-site-id="(\d+)"/);
+                if (match && match[1]) {
+                    const siteId = match[1];
+                    const journeyItem = await checkJourneyStatus(siteId);
+                    updatePopupButtons(siteId, journeyItem);
+                }
+            });
+        }
     }
 
     // ===========================================================================

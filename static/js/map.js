@@ -67,10 +67,10 @@
         minZoom: 5,
         maxZoom: 18,
 
-        // Ireland bounds for constraining the map
+        // Ireland bounds for constraining the map (extended for popup visibility)
         maxBounds: [
-            [51.0, -11.5],  // Southwest
-            [56.0, -4.5]    // Northeast
+            [50.5, -12.0],  // Southwest (extended slightly)
+            [57.5, -3.5]    // Northeast (extended north for popup visibility)
         ],
 
         // API endpoints
@@ -168,7 +168,7 @@
             minZoom: CONFIG.minZoom,
             maxZoom: CONFIG.maxZoom,
             maxBounds: CONFIG.maxBounds,
-            maxBoundsViscosity: 0.8,
+            maxBoundsViscosity: 0.7,
             zoomControl: false
         });
 
@@ -620,7 +620,6 @@
             : (props.description_en || props.description || '');
 
         const siteTypeDisplay = props.site_type_display || formatSiteType(props.site_type);
-        const isNationalMonument = props.is_national_monument || props.national_monument;
 
         // Get coordinates from geometry if available, otherwise from properties
         let lat = null, lon = null;
@@ -689,14 +688,6 @@
 
         if (props.era_name) {
             html += `<span class="popup-meta-item"><span class="meta-icon">${ICONS.era}</span>${escapeHtml(props.era_name)}</span>`;
-        }
-
-        if (props.significance_level) {
-            html += `<span class="popup-meta-item"><span class="meta-icon">${ICONS.star}</span>Significance: ${escapeHtml(String(props.significance_level))}</span>`;
-        }
-
-        if (isNationalMonument) {
-            html += `<span class="popup-meta-item national-monument"><span class="meta-icon">${ICONS.trophy}</span>National Monument</span>`;
         }
 
         html += `</div>`;

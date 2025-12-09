@@ -1,12 +1,28 @@
+# Python
 venv/
 *.pyc
 __pycache__/
+
+# Environment & Secrets
 .env
+*.log
+
+# Database
 db.sqlite3
+.sql
+*.bak
+*.dump
+
+# Deployment artifacts & secrets
+deployment/
+deployment_info.txt
+
+# IDEs
 .vscode/
 .idea/
-.sql
-*.log
+.DS_Store
+
+# Documentation (project-specific, not for version control)
 .claude
 CLAUDE.md
 WebAppRequirements.txt
@@ -14,5 +30,6 @@ P1-2-Backend-Setup.md
 Implementation-Plan.md
 inspected_models.txt
 .playwright-mcp
-.DS_Store
+
+# Media files
 media/

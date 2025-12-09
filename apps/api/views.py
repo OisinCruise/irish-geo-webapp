@@ -351,8 +351,9 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
         # Use raw SQL annotation for geometry simplification (PostGIS)
         # This reduces 13MB of province geometries to ~1-2MB
         # Also annotate county_count and site_count to avoid N+1 queries
+        # Table name qualified to avoid ambiguous column reference when joins are present
         return Province.objects.filter(is_deleted=False).extra(
-            select={'geometry': 'ST_SimplifyPreserveTopology(geometry, 0.005)'}
+            select={'geometry': 'ST_SimplifyPreserveTopology(province.geometry, 0.005)'}
         ).annotate(
             annotated_county_count=Count(
                 'counties',
@@ -405,8 +406,9 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         """
         # Use raw SQL annotation for geometry simplification (PostGIS)
         # This reduces 28MB of county geometries to ~2-3MB
+        # Table name qualified to avoid ambiguous column reference when province is joined via select_related
         return County.objects.filter(is_deleted=False).select_related('province').extra(
-            select={'geometry': 'ST_SimplifyPreserveTopology(geometry, 0.003)'}
+            select={'geometry': 'ST_SimplifyPreserveTopology(county.geometry, 0.003)'}
         ).annotate(
             annotated_site_count=Count(
                 'historical_sites',

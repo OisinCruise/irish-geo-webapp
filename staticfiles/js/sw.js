@@ -418,4 +418,3 @@ self.addEventListener('message', (event) => {
 });
 
 console.log(`[SW] Service Worker loaded - Version ${CACHE_VERSION}`);
-

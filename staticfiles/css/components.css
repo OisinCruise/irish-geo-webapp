@@ -144,11 +144,6 @@
     z-index: 1002 !important;
 }
 
-.leaflet-control-layers-expanded {
-    z-index: 1002 !important;
-    position: relative;
-}
-
 .toolbar-section {
     display: flex;
     flex-direction: column;

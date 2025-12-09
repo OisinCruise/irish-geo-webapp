@@ -1,5 +1,6 @@
 # Irish Historical Sites GIS - Django Application
 # Multi-stage build for smaller production image
+# Configured for Render.com deployment with Neon PostgreSQL
 
 # Stage 1: Build stage
 FROM python:3.11-slim-bookworm AS builder
@@ -74,8 +75,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')" || exit 1
 
 # Default command
-# Optimized for S2 Standard tier (3.5 GB RAM, 2 CPU cores, Always On enabled)
-# Reduced to 2 workers with 2 threads each (4 total threads) to reduce resource contention
-# Increased timeout to 230s to match Azure App Service request timeout limit
-# This prevents timeouts during Neon auto-resume and large GeoJSON serialization
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "2", "--timeout", "230", "--graceful-timeout", "60", "--max-requests", "1000", "--max-requests-jitter", "100", "--worker-class", "gthread"]
+# Optimized for Render Starter/Standard instances
+# 2 workers with 2 threads each for balanced memory/CPU usage
+# Timeout set to 120s (Render default) with graceful shutdown
+# max-requests helps prevent memory leaks in long-running processes
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "2", "--timeout", "120", "--graceful-timeout", "30", "--max-requests", "1000", "--max-requests-jitter", "100", "--worker-class", "gthread"]

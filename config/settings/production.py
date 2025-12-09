@@ -1,5 +1,5 @@
 """
-Production settings for Azure deployment
+Production settings for Render deployment with Neon PostgreSQL
 """
 from .base import *
 import os
@@ -11,21 +11,23 @@ DEBUG = False
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS', '').split(',')
 ALLOWED_HOSTS = [host.strip() for host in ALLOWED_HOSTS if host.strip()]
 
-# Add Azure default domain pattern and internal IPs for health probes
+# Add Render default domain pattern
 ALLOWED_HOSTS.extend([
-    '.azurewebsites.net',
+    '.onrender.com',
     'localhost',
     '127.0.0.1',
 ])
 
-# Allow all hosts for Azure internal health probes (169.254.x.x range)
-# This is safe because Azure App Service handles external traffic filtering
-ALLOWED_HOSTS.append('*')
-
-# CSRF trusted origins for Azure
+# CSRF trusted origins for Render
 CSRF_TRUSTED_ORIGINS = [
-    'https://*.azurewebsites.net',
+    'https://*.onrender.com',
 ]
+
+# Add custom domain if set
+CUSTOM_DOMAIN = os.environ.get('CUSTOM_DOMAIN', '')
+if CUSTOM_DOMAIN:
+    ALLOWED_HOSTS.append(CUSTOM_DOMAIN)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{CUSTOM_DOMAIN}')
 
 # Security headers (extends base.py settings for production)
 SECURE_SSL_REDIRECT = True
@@ -39,23 +41,45 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
 # Database - Neon PostgreSQL with PostGIS
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.contrib.gis.db.backends.postgis',
-        'NAME': os.environ.get('DB_NAME', 'irish_geo_db'),
-        'USER': os.environ.get('DB_USER', 'geo_admin'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
-        'OPTIONS': {
-            'sslmode': 'require',  # Neon requires SSL
-            'connect_timeout': '60',  # 60 second connection timeout for Neon auto-resume
-            # Note: search_path and statement_timeout cannot be used with Neon's connection pooler
-            # The public schema is the default, so this is not needed
-        },
-        'CONN_MAX_AGE': 600,  # Increased for S2 Standard tier - better connection reuse
+# Supports both DATABASE_URL (Render style) and individual env vars
+DATABASE_URL = os.environ.get('DATABASE_URL', '')
+
+if DATABASE_URL:
+    # Parse DATABASE_URL for Render-style configuration
+    import urllib.parse
+    url = urllib.parse.urlparse(DATABASE_URL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.contrib.gis.db.backends.postgis',
+            'NAME': url.path[1:],  # Remove leading slash
+            'USER': url.username,
+            'PASSWORD': url.password,
+            'HOST': url.hostname,
+            'PORT': url.port or '5432',
+            'OPTIONS': {
+                'sslmode': 'require',  # Neon requires SSL
+                'connect_timeout': '60',  # 60 second connection timeout for Neon auto-resume
+            },
+            'CONN_MAX_AGE': 600,
+        }
     }
-}
+else:
+    # Fallback to individual environment variables
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.contrib.gis.db.backends.postgis',
+            'NAME': os.environ.get('DB_NAME', 'neondb'),
+            'USER': os.environ.get('DB_USER', 'neondb_owner'),
+            'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+            'HOST': os.environ.get('DB_HOST', 'localhost'),
+            'PORT': os.environ.get('DB_PORT', '5432'),
+            'OPTIONS': {
+                'sslmode': 'require',  # Neon requires SSL
+                'connect_timeout': '60',  # 60 second connection timeout for Neon auto-resume
+            },
+            'CONN_MAX_AGE': 600,
+        }
+    }
 
 # Static files - use WhiteNoise for serving
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

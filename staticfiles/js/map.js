@@ -393,8 +393,9 @@
             let url = CONFIG.api.sites;
             const params = new URLSearchParams();
 
-            // Request a large page size to get all sites (or at least many)
-            params.append('page_size', '2000');
+            // Request reasonable page size to prevent memory issues on B1 Basic tier
+            // Reduced from 2000 to 200 to prevent OOM kills
+            params.append('page_size', '200');
 
             // Apply filters
             if (currentFilters.era) params.append('era', currentFilters.era);
@@ -508,10 +509,30 @@
             if (!response.ok) throw new Error('Failed to load counties');
 
             const data = await response.json();
+            console.log('Counties API response:', {
+                type: data.type,
+                hasFeatures: !!data.features,
+                featureCount: data.features?.length,
+                isArray: Array.isArray(data)
+            });
+            
             countiesLayer.clearLayers();
-            countiesLayer.addData(data);
+            
+            // Handle both FeatureCollection and array of features
+            if (data.type === 'FeatureCollection' && data.features) {
+                countiesLayer.addData(data);
+            } else if (Array.isArray(data) && data.length > 0 && data[0].type === 'Feature') {
+                // Wrap array of features in FeatureCollection
+                countiesLayer.addData({
+                    type: 'FeatureCollection',
+                    features: data
+                });
+            } else {
+                console.warn('Unexpected counties data format:', data);
+            }
         } catch (error) {
             console.error('Error loading counties:', error);
+            showToast('Failed to load county boundaries', 'error');
         }
     }
 
@@ -1946,11 +1967,24 @@
      * Toggle description expand/collapse
      */
     window.toggleDescription = function(uniqueId) {
-        const shortDesc = document.getElementById(`${uniqueId}-short`);
-        const fullDesc = document.getElementById(`${uniqueId}-full`);
-        const btn = shortDesc?.parentElement?.querySelector('.btn-expand-desc');
+        // Find elements - search in the currently open popup if available
+        let container = null;
+        const openPopup = document.querySelector('.leaflet-popup-content-wrapper');
+        if (openPopup) {
+            container = openPopup;
+        } else {
+            container = document;
+        }
         
-        if (!shortDesc || !fullDesc || !btn) return;
+        const shortDesc = container.querySelector(`#${uniqueId}-short`);
+        const fullDesc = container.querySelector(`#${uniqueId}-full`);
+        const btn = container.querySelector(`.btn-expand-desc[onclick*="${uniqueId}"]`) || 
+                    shortDesc?.parentElement?.querySelector('.btn-expand-desc');
+        
+        if (!shortDesc || !fullDesc || !btn) {
+            console.warn('Could not find description elements for:', uniqueId);
+            return;
+        }
         
         const isExpanded = btn.getAttribute('data-expanded') === 'true';
         
@@ -1959,13 +1993,15 @@
             shortDesc.style.display = 'block';
             fullDesc.style.display = 'none';
             btn.setAttribute('data-expanded', 'false');
-            btn.querySelector('.expand-text').textContent = 'Read more';
+            const expandText = btn.querySelector('.expand-text');
+            if (expandText) expandText.textContent = 'Read more';
         } else {
             // Expand
             shortDesc.style.display = 'none';
             fullDesc.style.display = 'block';
             btn.setAttribute('data-expanded', 'true');
-            btn.querySelector('.expand-text').textContent = 'Show less';
+            const expandText = btn.querySelector('.expand-text');
+            if (expandText) expandText.textContent = 'Show less';
         }
     };
 

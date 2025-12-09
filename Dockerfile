@@ -2,7 +2,7 @@
 # Multi-stage build for smaller production image
 
 # Stage 1: Build stage
-FROM python:3.11-slim as builder
+FROM python:3.11-slim-bookworm AS builder
 
 # Set build environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -28,7 +28,7 @@ RUN pip install --upgrade pip && \
 
 
 # Stage 2: Production stage
-FROM python:3.11-slim as production
+FROM python:3.11-slim-bookworm AS production
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -36,10 +36,10 @@ ENV PYTHONUNBUFFERED=1
 ENV PATH="/opt/venv/bin:$PATH"
 ENV DJANGO_SETTINGS_MODULE=config.settings.production
 
-# Install runtime dependencies only
+# Install runtime dependencies only (Debian Bookworm package names)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
-    libgdal32 \
+    gdal-bin \
     libgeos-c1v5 \
     libproj25 \
     && rm -rf /var/lib/apt/lists/*
@@ -60,6 +60,9 @@ COPY --chown=django:django . .
 RUN mkdir -p /app/staticfiles /app/media /app/logs && \
     chown -R django:django /app
 
+# Collect static files during build (with dummy secret key for collectstatic)
+RUN DJANGO_SECRET_KEY=build-time-secret python manage.py collectstatic --noinput
+
 # Switch to non-root user
 USER django
 
@@ -71,5 +74,8 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')" || exit 1
 
 # Default command
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]
-
+# Optimized for S2 Standard tier (3.5 GB RAM, 2 CPU cores, Always On enabled)
+# Reduced to 2 workers with 2 threads each (4 total threads) to reduce resource contention
+# Increased timeout to 230s to match Azure App Service request timeout limit
+# This prevents timeouts during Neon auto-resume and large GeoJSON serialization
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "2", "--threads", "2", "--timeout", "230", "--graceful-timeout", "60", "--max-requests", "1000", "--max-requests-jitter", "100", "--worker-class", "gthread"]

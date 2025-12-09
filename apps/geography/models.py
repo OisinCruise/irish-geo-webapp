@@ -3,11 +3,9 @@ Geography Models - Irish Administrative Boundaries
 Province, County, and Historical Era models for Irish Historical Sites GIS
 """
 from django.contrib.gis.db import models
-from django.contrib.gis.geos import Point, MultiPolygon
+from django.contrib.gis.geos import Point
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
-from django.db.models import Q
-import re
 
 
 # ==============================================================================

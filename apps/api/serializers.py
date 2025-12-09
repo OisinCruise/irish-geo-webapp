@@ -6,8 +6,47 @@ Supports bilingual content (English/Irish) and comprehensive spatial data.
 """
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
-from apps.sites.models import HistoricalSite, SiteImage, SiteSource
+from django.utils import timezone
+from apps.sites.models import HistoricalSite, SiteImage, SiteSource, BucketListItem
 from apps.geography.models import Province, County, HistoricalEra
+
+
+# ==============================================================================
+# SERIALIZER MIXINS (DRY - Don't Repeat Yourself)
+# ==============================================================================
+
+class SiteRelatedFieldsMixin:
+    """Mixin providing common related field methods for site serializers"""
+    
+    def get_county_name(self, obj):
+        return obj.county.name_en if obj.county else None
+    
+    def get_era_name(self, obj):
+        return obj.era.name_en if obj.era else None
+    
+    def get_era_color(self, obj):
+        return obj.era.color_hex if obj.era else None
+    
+    def get_primary_image_url(self, obj):
+        """
+        Optimized to use prefetched ordered images (primary first)
+        Avoids N+1 queries by using prefetched data
+        """
+        # Check if we have the optimized prefetch (from list view)
+        if hasattr(obj, 'ordered_images') and obj.ordered_images:
+            # First image in ordered_images is primary (or first non-deleted)
+            return obj.ordered_images[0].image_url
+        
+        # Fallback: use regular images relation (for detail views or compatibility)
+        # This should be rare since we prefetch in get_queryset
+        if hasattr(obj, 'images') and obj.images.exists():
+            primary = obj.images.filter(is_primary=True, is_deleted=False).first()
+            if primary:
+                return primary.image_url
+            first = obj.images.filter(is_deleted=False).first()
+            return first.image_url if first else None
+        
+        return None
 
 
 # ==============================================================================
@@ -167,7 +206,7 @@ class CountyMinimalSerializer(serializers.ModelSerializer):
 # HISTORICAL SITE SERIALIZERS (GeoJSON)
 # ==============================================================================
 
-class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
+class HistoricalSiteListSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerializer):
     """
     Lightweight GeoJSON serializer for map markers
     Optimized for loading many points on the map
@@ -179,19 +218,21 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
         source='get_site_type_display', read_only=True
     )
     primary_image_url = serializers.SerializerMethodField()
-
-    def get_county_name(self, obj):
-        return obj.county.name_en if obj.county else None
-
-    def get_era_name(self, obj):
-        return obj.era.name_en if obj.era else None
-
-    def get_primary_image_url(self, obj):
-        primary = obj.images.filter(is_primary=True, is_deleted=False).first()
-        if primary:
-            return primary.image_url
-        first = obj.images.filter(is_deleted=False).first()
-        return first.image_url if first else None
+    # Truncate descriptions for list view to reduce data transfer (popups can load full on demand)
+    description_en = serializers.SerializerMethodField()
+    description_ga = serializers.SerializerMethodField()
+    
+    def get_description_en(self, obj):
+        """Return truncated description for list view (200 chars max)"""
+        if obj.description_en:
+            return obj.description_en[:200] + '...' if len(obj.description_en) > 200 else obj.description_en
+        return None
+    
+    def get_description_ga(self, obj):
+        """Return truncated description for list view (200 chars max)"""
+        if obj.description_ga:
+            return obj.description_ga[:200] + '...' if len(obj.description_ga) > 200 else obj.description_ga
+        return None
     
     class Meta:
         model = HistoricalSite
@@ -205,7 +246,7 @@ class HistoricalSiteListSerializer(GeoFeatureModelSerializer):
         ]
 
 
-class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
+class HistoricalSiteDetailSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerializer):
     """
     Full GeoJSON serializer for site detail view
     Includes all related data, images, and sources
@@ -218,20 +259,11 @@ class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
     era_name_ga = serializers.SerializerMethodField()
     era_color = serializers.SerializerMethodField()
 
-    def get_county_name(self, obj):
-        return obj.county.name_en if obj.county else None
-
     def get_county_name_ga(self, obj):
         return obj.county.name_ga if obj.county else None
 
-    def get_era_name(self, obj):
-        return obj.era.name_en if obj.era else None
-
     def get_era_name_ga(self, obj):
         return obj.era.name_ga if obj.era else None
-
-    def get_era_color(self, obj):
-        return obj.era.color_hex if obj.era else None
 
     # Nested serializers
     images = SiteImageSerializer(many=True, read_only=True)
@@ -294,7 +326,7 @@ class HistoricalSiteDetailSerializer(GeoFeatureModelSerializer):
         return None
 
 
-class HistoricalSitePopupSerializer(GeoFeatureModelSerializer):
+class HistoricalSitePopupSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerializer):
     """
     Medium-weight serializer for map popup display
     Includes essential info without full nested objects
@@ -306,15 +338,6 @@ class HistoricalSitePopupSerializer(GeoFeatureModelSerializer):
         source='get_site_type_display', read_only=True
     )
     primary_image_url = serializers.SerializerMethodField()
-
-    def get_county_name(self, obj):
-        return obj.county.name_en if obj.county else None
-
-    def get_era_name(self, obj):
-        return obj.era.name_en if obj.era else None
-
-    def get_era_color(self, obj):
-        return obj.era.color_hex if obj.era else None
 
     class Meta:
         model = HistoricalSite
@@ -328,13 +351,6 @@ class HistoricalSitePopupSerializer(GeoFeatureModelSerializer):
             'date_established', 'primary_image_url',
             'is_public_access', 'website_url'
         ]
-
-    def get_primary_image_url(self, obj):
-        primary = obj.images.filter(is_primary=True, is_deleted=False).first()
-        if primary:
-            return primary.image_url
-        first = obj.images.filter(is_deleted=False).first()
-        return first.image_url if first else None
 
 
 # ==============================================================================
@@ -395,7 +411,7 @@ class SiteStatisticsSerializer(serializers.Serializer):
 # BUCKET LIST SERIALIZERS
 # ==============================================================================
 
-class HistoricalSiteMinimalSerializer(serializers.ModelSerializer):
+class HistoricalSiteMinimalSerializer(SiteRelatedFieldsMixin, serializers.ModelSerializer):
     """Minimal site serializer for nested use in bucket list"""
     county_name = serializers.SerializerMethodField()
     era_name = serializers.SerializerMethodField()
@@ -412,12 +428,6 @@ class HistoricalSiteMinimalSerializer(serializers.ModelSerializer):
             'era_name', 'coordinates', 'description_en'
         ]
 
-    def get_county_name(self, obj):
-        return obj.county.name_en if obj.county else None
-
-    def get_era_name(self, obj):
-        return obj.era.name_en if obj.era else None
-
 
 class BucketListItemSerializer(serializers.ModelSerializer):
     """
@@ -428,7 +438,6 @@ class BucketListItemSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
 
     class Meta:
-        from apps.sites.models import BucketListItem
         model = BucketListItem
         fields = [
             'id', 'site', 'status', 'status_display', 'added_at',
@@ -491,7 +500,6 @@ class BucketListUpdateSerializer(serializers.Serializer):
     def validate(self, data):
         """Set visited_at when status is changed to visited"""
         if data.get('status') == 'visited' and not data.get('visited_at'):
-            from django.utils import timezone
             data['visited_at'] = timezone.now()
         return data
 

@@ -22,7 +22,6 @@ urlpatterns = [
     path('explore/', TemplateView.as_view(template_name='explore.html'), name='explore'),
     path('about/', TemplateView.as_view(template_name='about.html'), name='about'),
     path('my-journey/', TemplateView.as_view(template_name='collage.html'), name='collage'),
-    path('test-journey/', TemplateView.as_view(template_name='test_journey.html'), name='test-journey'),
     path('offline/', TemplateView.as_view(template_name='offline.html'), name='offline'),
 
     # ===========================================================================

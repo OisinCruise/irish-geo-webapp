@@ -393,8 +393,9 @@
             let url = CONFIG.api.sites;
             const params = new URLSearchParams();
 
-            // Request a large page size to get all sites (or at least many)
-            params.append('page_size', '2000');
+            // Request reasonable page size to prevent memory issues on B1 Basic tier
+            // Reduced from 2000 to 200 to prevent OOM kills
+            params.append('page_size', '200');
 
             // Apply filters
             if (currentFilters.era) params.append('era', currentFilters.era);

@@ -20,6 +20,9 @@ drf-spectacular==0.26.2
 # CORS and Security
 django-cors-headers==4.0.0
 
+# Static files serving (for production)
+whitenoise==6.6.0
+
 # Geospatial libraries
 pyproj==3.7.2
 shapely==2.0.6

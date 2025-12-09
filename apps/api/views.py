@@ -14,7 +14,7 @@ from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.measure import D
 from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
-
+from django.utils import timezone
 from apps.sites.models import HistoricalSite, SiteImage, SiteSource, BucketListItem
 from apps.geography.models import Province, County, HistoricalEra
 from .serializers import (
@@ -51,16 +51,16 @@ from .serializers import (
 
 class StandardResultsPagination(PageNumberPagination):
     """Standard pagination for list endpoints"""
-    page_size = 100
+    page_size = 50  # Reduced for B1 Basic tier memory constraints
     page_size_query_param = 'page_size'
-    max_page_size = 500
+    max_page_size = 200  # Reduced from 500 to prevent OOM
 
 
 class MapResultsPagination(PageNumberPagination):
     """Larger pagination for map data loading"""
-    page_size = 500
+    page_size = 200  # Reduced from 500 for B1 Basic tier
     page_size_query_param = 'page_size'
-    max_page_size = 2000
+    max_page_size = 500  # Reduced from 2000 to prevent OOM
 
 
 # ==============================================================================
@@ -85,10 +85,47 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = HistoricalSite.objects.filter(
         is_deleted=False,
         approval_status='approved'
-    ).select_related('county', 'county__province', 'era').prefetch_related('images')
+    ).select_related('county', 'county__province', 'era')
+    
+    def get_queryset(self):
+        """
+        Highly optimized queryset for fast loading of 100+ sites
+        - Uses Prefetch with filtered/ordered queryset for images
+        - Uses only() to limit fields fetched for list views (reduces data transfer)
+        - Optimized for Neon database performance
+        """
+        from django.db.models import Prefetch
+        
+        queryset = super().get_queryset()
+        
+        # For list views, optimize heavily: only fetch needed fields and optimize images
+        if self.action == 'list':
+            # Prefetch images ordered by primary first - serializer will use first item
+            # This reduces memory vs loading all images, and ensures primary is first
+            queryset = queryset.prefetch_related(
+                Prefetch(
+                    'images',
+                    queryset=SiteImage.objects.filter(
+                        is_deleted=False
+                    ).order_by('-is_primary', 'display_order'),
+                    to_attr='ordered_images'
+                )
+            )
+            # Use only() to limit fields fetched - significantly reduces data transfer from Neon
+            # This is critical for performance with 100+ sites
+            queryset = queryset.only(
+                'id', 'name_en', 'name_ga', 'site_type', 'significance_level',
+                'national_monument', 'description_en', 'description_ga', 'location',
+                'county_id', 'era_id'  # Foreign keys for select_related
+            )
+        else:
+            # For detail views, prefetch all images normally
+            queryset = queryset.prefetch_related('images')
+        
+        return queryset
 
     serializer_class = HistoricalSiteDetailSerializer
-    pagination_class = StandardResultsPagination
+    pagination_class = MapResultsPagination  # Use MapResultsPagination for map loading (larger page sizes)
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = {
         'county': ['exact'],
@@ -102,7 +139,14 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     }
     search_fields = ['name_en', 'name_ga', 'description_en', 'description_ga']
     ordering_fields = ['name_en', 'significance_level', 'created_at', 'date_established']
-    ordering = ['-significance_level', 'name_en']
+    ordering = ['-significance_level', 'name_en']  # Uses idx_site_significance index
+    
+    def list(self, request, *args, **kwargs):
+        """
+        Optimized list view for fast loading of sites
+        Uses optimized queryset with field limiting and efficient image prefetching
+        """
+        return super().list(request, *args, **kwargs)
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -533,7 +577,6 @@ class BucketListViewSet(viewsets.ModelViewSet):
             )
 
         # Create the bucket list item
-        from django.utils import timezone
         item = BucketListItem.objects.create(
             session_key=session_key,
             site=site,
@@ -556,7 +599,6 @@ class BucketListViewSet(viewsets.ModelViewSet):
         Handles photo uploads and caption updates.
         """
         item = self.get_object()
-        from django.utils import timezone
         
         # Handle photo upload
         if 'photo' in request.FILES:
@@ -584,7 +626,6 @@ class BucketListViewSet(viewsets.ModelViewSet):
     def destroy(self, request, *args, **kwargs):
         """Soft delete bucket list item"""
         instance = self.get_object()
-        from django.utils import timezone
         instance.is_deleted = True
         instance.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
@@ -603,7 +644,6 @@ class BucketListViewSet(viewsets.ModelViewSet):
         Automatically sets visited_at timestamp.
         """
         item = self.get_object()
-        from django.utils import timezone
 
         # Update status and timestamp
         item.status = 'visited'
@@ -685,7 +725,6 @@ class BucketListViewSet(viewsets.ModelViewSet):
     def toggle_status(self, request, pk=None):
         """Toggle between wishlist and visited status"""
         item = self.get_object()
-        from django.utils import timezone
 
         if item.status == 'wishlist':
             item.status = 'visited'

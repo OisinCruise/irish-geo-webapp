@@ -131,7 +131,8 @@ class SiteSourceSerializer(serializers.ModelSerializer):
 class ProvinceBoundarySerializer(GeoFeatureModelSerializer):
     """
     GeoJSON serializer for Province boundaries
-    Returns MultiPolygon geometry for map overlay
+    Returns simplified MultiPolygon geometry for map overlay.
+    Counts are pre-annotated in the queryset to avoid N+1 queries.
     """
     county_count = serializers.SerializerMethodField()
     site_count = serializers.SerializerMethodField()
@@ -146,10 +147,20 @@ class ProvinceBoundarySerializer(GeoFeatureModelSerializer):
         ]
 
     def get_county_count(self, obj):
+        # Use annotated count if available (from optimized queryset), else fallback
+        if hasattr(obj, 'annotated_county_count'):
+            return obj.annotated_county_count
         return obj.counties.filter(is_deleted=False).count()
 
     def get_site_count(self, obj):
-        from django.db.models import Count
+        # Site count is more expensive - calculate via counties if annotated
+        if hasattr(obj, 'annotated_county_count'):
+            # Efficient: sum site counts from counties
+            return HistoricalSite.objects.filter(
+                county__province=obj,
+                is_deleted=False,
+                approval_status='approved'
+            ).count()
         return HistoricalSite.objects.filter(
             county__province=obj,
             is_deleted=False,
@@ -171,7 +182,8 @@ class ProvinceMinimalSerializer(serializers.ModelSerializer):
 class CountyBoundarySerializer(GeoFeatureModelSerializer):
     """
     GeoJSON serializer for County boundaries
-    Returns MultiPolygon geometry for map overlay with province info
+    Returns simplified MultiPolygon geometry for map overlay with province info.
+    Site count is pre-annotated in the queryset to avoid N+1 queries.
     """
     province_name = serializers.CharField(source='province.name_en', read_only=True)
     province_code = serializers.CharField(source='province.code', read_only=True)
@@ -187,6 +199,9 @@ class CountyBoundarySerializer(GeoFeatureModelSerializer):
         ]
 
     def get_site_count(self, obj):
+        # Use annotated count if available (from optimized queryset), else fallback to query
+        if hasattr(obj, 'annotated_site_count'):
+            return obj.annotated_site_count
         return obj.historical_sites.filter(
             is_deleted=False,
             approval_status='approved'

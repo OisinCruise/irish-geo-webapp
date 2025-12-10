@@ -13,6 +13,7 @@ from drf_spectacular.views import (
     SpectacularSwaggerView,
     SpectacularRedocView
 )
+from apps.api.views_service_worker import service_worker
 
 urlpatterns = [
     # ===========================================================================
@@ -50,7 +51,6 @@ urlpatterns = [
     # SERVICE WORKER (PWA)
     # ===========================================================================
     # Serve Service Worker from root with proper headers to allow scope '/'
-    from apps.api.views_service_worker import service_worker
     path('sw.js', service_worker, name='service_worker'),
 ]
 

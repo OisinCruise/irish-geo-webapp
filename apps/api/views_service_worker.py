@@ -26,7 +26,13 @@ def service_worker(request):
     
     # Try STATIC_ROOT first (production - after collectstatic)
     if hasattr(settings, 'STATIC_ROOT') and settings.STATIC_ROOT:
-        static_root_path = os.path.join(settings.STATIC_ROOT, 'js', 'sw.js')
+        # Handle Path objects (Django 3.1+)
+        static_root = settings.STATIC_ROOT
+        if hasattr(static_root, '__fspath__'):
+            static_root = str(static_root)
+        else:
+            static_root = str(static_root)
+        static_root_path = os.path.join(static_root, 'js', 'sw.js')
         if os.path.exists(static_root_path):
             sw_path = static_root_path
     
@@ -37,12 +43,19 @@ def service_worker(request):
             static_dirs = settings.STATICFILES_DIRS
             if isinstance(static_dirs, (list, tuple)) and len(static_dirs) > 0:
                 static_dir = static_dirs[0]
-                if isinstance(static_dir, (list, tuple)):
+                # Handle Path objects (Django 3.1+)
+                if hasattr(static_dir, '__fspath__'):
+                    static_dir = str(static_dir)
+                elif isinstance(static_dir, (list, tuple)):
                     static_dir = static_dir[0]  # Handle tuple format
+                    if hasattr(static_dir, '__fspath__'):
+                        static_dir = str(static_dir)
+                else:
+                    static_dir = str(static_dir)
                 potential_path = os.path.join(static_dir, 'js', 'sw.js')
                 if os.path.exists(potential_path):
                     sw_path = potential_path
-        except (IndexError, TypeError, AttributeError) as e:
+        except (IndexError, TypeError, AttributeError, OSError) as e:
             logger.warning(f'Error accessing STATICFILES_DIRS: {e}')
     
     # Last resort: try Django's static file finder (may not work in production)

@@ -23,6 +23,55 @@
     'use strict';
 
     // ===========================================================================
+    // GLOBAL FUNCTIONS (must be defined early for inline handlers)
+    // ===========================================================================
+    
+    /**
+     * Toggle description expand/collapse - defined early for popup onclick handlers
+     * CRITICAL: Must be on window object to be accessible from inline onclick handlers
+     */
+    window.toggleDescription = function(uniqueId) {
+        try {
+            // Find elements - use more robust selectors
+            const shortDesc = document.getElementById(`${uniqueId}-short`);
+            const fullDesc = document.getElementById(`${uniqueId}-full`);
+            
+            if (!shortDesc || !fullDesc) {
+                console.warn(`toggleDescription: Elements not found for ${uniqueId}`);
+                return;
+            }
+            
+            // Find button - search from container to ensure we get the right one
+            const container = shortDesc.closest('.popup-description-container');
+            const btn = container ? container.querySelector('.btn-expand-desc') : null;
+            
+            if (!btn) {
+                console.warn(`toggleDescription: Button not found for ${uniqueId}`);
+                return;
+            }
+            
+            const isExpanded = btn.getAttribute('data-expanded') === 'true';
+            const expandText = btn.querySelector('.expand-text');
+            
+            if (isExpanded) {
+                // Collapse - show short, hide full
+                shortDesc.style.display = 'block';
+                fullDesc.style.display = 'none';
+                btn.setAttribute('data-expanded', 'false');
+                if (expandText) expandText.textContent = 'Read more';
+            } else {
+                // Expand - hide short, show full
+                shortDesc.style.display = 'none';
+                fullDesc.style.display = 'block';
+                btn.setAttribute('data-expanded', 'true');
+                if (expandText) expandText.textContent = 'Show less';
+            }
+        } catch (error) {
+            console.error('Error in toggleDescription:', error);
+        }
+    };
+
+    // ===========================================================================
     // CONFIGURATION
     // ===========================================================================
 
@@ -679,11 +728,14 @@
             
             if (needsTruncation) {
                 const uniqueId = `desc-${props.id || Date.now()}`;
+                // CRITICAL: Use proper event handler binding to ensure function is accessible
+                // Escape the uniqueId to prevent XSS and ensure proper string handling
+                const escapedUniqueId = uniqueId.replace(/'/g, "\\'");
                 html += `
                     <div class="popup-description-container">
                         <p class="popup-description" id="${uniqueId}-short">${escapeHtml(truncatedDesc)}<span class="description-ellipsis">...</span></p>
                         <p class="popup-description popup-description-full" id="${uniqueId}-full" style="display: none;">${escapeHtml(description)}</p>
-                        <button class="btn-expand-desc" onclick="window.toggleDescription('${uniqueId}')" data-expanded="false">
+                        <button class="btn-expand-desc" onclick="if(window.toggleDescription){window.toggleDescription('${escapedUniqueId}');}else{console.error('toggleDescription not available');}" data-expanded="false" type="button">
                             <span class="expand-text">Read more</span>
                         </button>
                     </div>
@@ -2002,32 +2054,6 @@
         showToast('Opening Google Maps directions...', 'info');
     };
 
-    /**
-     * Toggle description expand/collapse
-     */
-    window.toggleDescription = function(uniqueId) {
-        const shortDesc = document.getElementById(`${uniqueId}-short`);
-        const fullDesc = document.getElementById(`${uniqueId}-full`);
-        const btn = shortDesc?.parentElement?.querySelector('.btn-expand-desc');
-        
-        if (!shortDesc || !fullDesc || !btn) return;
-        
-        const isExpanded = btn.getAttribute('data-expanded') === 'true';
-        
-        if (isExpanded) {
-            // Collapse
-            shortDesc.style.display = 'block';
-            fullDesc.style.display = 'none';
-            btn.setAttribute('data-expanded', 'false');
-            btn.querySelector('.expand-text').textContent = 'Read more';
-        } else {
-            // Expand
-            shortDesc.style.display = 'none';
-            fullDesc.style.display = 'block';
-            btn.setAttribute('data-expanded', 'true');
-            btn.querySelector('.expand-text').textContent = 'Show less';
-        }
-    };
 
     /**
      * Get CSRF token from cookie or meta tag

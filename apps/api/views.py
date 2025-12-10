@@ -90,7 +90,7 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = HistoricalSite.objects.filter(
         is_deleted=False,
         approval_status='approved'
-    ).select_related('county', 'county__province', 'era')
+    ).select_related('county', 'county__province', 'era').order_by('-significance_level', 'name_en')
     
     def get_queryset(self):
         """
@@ -121,11 +121,17 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
             # CRITICAL: Use only() to limit fields fetched - reduces memory usage by ~70%
             # This is essential for preventing OOM errors with large datasets
             # Only fetch fields needed for map markers (serializer will handle truncation)
+            # Note: We include county_id and era_id for select_related, and the serializer
+            # will access county.name_en and era.name_en via the select_related relationship
             queryset = queryset.only(
                 'id', 'name_en', 'name_ga', 'site_type', 'significance_level',
                 'national_monument', 'description_en', 'description_ga', 'location',
                 'county_id', 'era_id'  # Foreign keys for select_related
             )
+            # CRITICAL: Ensure select_related is applied so county and era are available
+            # This is needed for serializer methods get_county_name() and get_era_name()
+            if not queryset.query.select_related:
+                queryset = queryset.select_related('county', 'era')
         else:
             # For detail views, prefetch all images normally
             queryset = queryset.prefetch_related('images')
@@ -154,12 +160,26 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         CRITICAL: Memory-efficient list view using pagination.
         Prevents loading all sites into memory at once, which causes OOM errors.
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
-            queryset = self.filter_queryset(self.get_queryset())
+            # Get optimized queryset for list view
+            queryset = self.get_queryset()
+            
+            # Apply filters
+            queryset = self.filter_queryset(queryset)
+            
+            # CRITICAL: Ensure queryset is ordered to prevent pagination warnings
+            # Check if ordering exists by examining the query
+            if not queryset.query.order_by:
+                queryset = queryset.order_by('-significance_level', 'name_en')
             
             # Apply pagination - this is critical for memory efficiency
             page = self.paginate_queryset(queryset)
             if page is not None:
+                # Use the correct serializer for list view (HistoricalSiteListSerializer)
+                # get_serializer() will automatically use HistoricalSiteListSerializer for 'list' action
                 serializer = self.get_serializer(page, many=True)
                 return self.get_paginated_response(serializer.data)
             
@@ -169,14 +189,15 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
             serializer = self.get_serializer(queryset, many=True)
             return Response(serializer.data)
         except Exception as e:
-            # Log error and return safe response to prevent 502
-            import logging
-            logger = logging.getLogger(__name__)
+            # Log error with full traceback for debugging
             logger.error(f'Error in HistoricalSiteViewSet.list: {str(e)}', exc_info=True)
-            return Response(
-                {'error': 'Failed to load sites', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            # Return empty GeoJSON FeatureCollection to prevent 502
+            # This allows the frontend to continue working even if the API fails
+            # Use proper GeoJSON format that the frontend expects
+            return Response({
+                'type': 'FeatureCollection',
+                'features': []
+            }, status=status.HTTP_200_OK)  # Return 200 with empty data rather than 500
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""

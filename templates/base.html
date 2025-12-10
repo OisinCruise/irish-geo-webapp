@@ -29,6 +29,7 @@
     <!-- ============================================================
          APPLE iOS PWA SUPPORT
          ============================================================ -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="Irish History">
@@ -182,10 +183,12 @@
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', async () => {
                 try {
-                    const registration = await navigator.serviceWorker.register(
-                        '{% static "js/sw.js" %}',
-                        { scope: '/' }
-                    );
+                    // Register Service Worker from root path (served via custom view with proper headers)
+                    // The Service Worker is served at /sw.js with Service-Worker-Allowed header set to '/'
+                    // This allows the SW to control the entire site even though the source file is in /static/js/
+                    const registration = await navigator.serviceWorker.register('/sw.js', {
+                        scope: '/'
+                    });
                     
                     console.log('[PWA] Service Worker registered:', registration.scope);
                     

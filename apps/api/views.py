@@ -396,6 +396,7 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
         
         # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
         # This prevents OOM errors by never loading MultiPolygon objects into Python
+        # Note: ORDER BY must be inside json_agg() when using aggregate functions
         sql = """
         SELECT json_build_object(
             'type', 'FeatureCollection',
@@ -429,12 +430,11 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
                             AND hs.approval_status = 'approved'
                         )
                     )
-                )
+                ) ORDER BY p.name_en
             )
         )
         FROM province p
         WHERE p.is_deleted = false
-        ORDER BY p.name_en
         """
         
         with connection.cursor() as cursor:
@@ -514,6 +514,7 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         
         # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
         # This prevents OOM errors by never loading MultiPolygon objects into Python
+        # Note: ORDER BY must be inside json_agg() when using aggregate functions
         sql = f"""
         SELECT json_build_object(
             'type', 'FeatureCollection',
@@ -543,13 +544,12 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
                             AND hs.approval_status = 'approved'
                         )
                     )
-                )
+                ) ORDER BY c.name_en
             )
         )
         FROM county c
         LEFT JOIN province p ON c.province_id = p.id
         WHERE {where_sql}
-        ORDER BY c.name_en
         """
         
         with connection.cursor() as cursor:

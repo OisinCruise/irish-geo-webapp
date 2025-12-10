@@ -454,14 +454,29 @@ class BucketListItemSerializer(serializers.ModelSerializer):
     """
     site = HistoricalSiteMinimalSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BucketListItem
         fields = [
             'id', 'site', 'status', 'status_display', 'added_at',
-            'visited_at', 'photo', 'photo_caption'
+            'visited_at', 'photo', 'photo_url', 'photo_caption'
         ]
         read_only_fields = ['id', 'added_at']
+
+    def get_photo_url(self, obj):
+        """
+        Return absolute URL for photo if it exists.
+        This ensures the frontend can access the image even in production.
+        """
+        if obj.photo and hasattr(obj.photo, 'url'):
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.photo.url)
+            # Fallback: construct URL from settings
+            from django.conf import settings
+            return f"{settings.MEDIA_URL}{obj.photo.name}" if obj.photo.name else None
+        return None
 
 
 class BucketListCreateSerializer(serializers.Serializer):

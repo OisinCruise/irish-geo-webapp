@@ -731,6 +731,12 @@ class BucketListViewSet(viewsets.ModelViewSet):
             is_deleted=False
         ).select_related('site', 'site__county', 'site__era')
 
+    def get_serializer_context(self):
+        """Add request to serializer context for absolute URL generation"""
+        context = super().get_serializer_context()
+        context['request'] = self.request
+        return context
+
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
         if self.action == 'create':
@@ -788,7 +794,7 @@ class BucketListViewSet(viewsets.ModelViewSet):
             visited_at=timezone.now() if item_status == 'visited' else None
         )
 
-        result_serializer = BucketListItemSerializer(item)
+        result_serializer = BucketListItemSerializer(item, context={'request': request})
         return Response(result_serializer.data, status=status.HTTP_201_CREATED)
 
     @extend_schema(
@@ -820,7 +826,7 @@ class BucketListViewSet(viewsets.ModelViewSet):
         
         item.save()
         
-        serializer = BucketListItemSerializer(item)
+        serializer = BucketListItemSerializer(item, context={'request': request})
         return Response(serializer.data)
 
     @extend_schema(

@@ -3,24 +3,79 @@
 <html lang="en" data-theme="light" data-lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="description" content="Explore Ireland's rich historical heritage through an interactive map featuring castles, monasteries, ancient monuments and archaeological sites.">
-    <meta name="keywords" content="Ireland, historical sites, castles, monasteries, heritage, archaeology, interactive map">
+    <meta name="keywords" content="Ireland, historical sites, castles, monasteries, heritage, archaeology, interactive map, PWA">
     <meta name="author" content="Irish Historical Sites GIS">
+    <meta name="robots" content="index, follow">
 
     <title>{% block title %}Irish Historical Sites{% endblock %} | Suíomhanna Stairiúla na hÉireann</title>
 
-    <!-- Favicon -->
+    <!-- ============================================================
+         FAVICON & ICONS
+         ============================================================ -->
     <link rel="icon" type="image/svg+xml" href="{% static 'images/favicon.svg' %}">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'images/icon-32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'images/icon-16.png' %}">
 
-    <!-- PWA Manifest -->
-    <link rel="manifest" href="{% static 'manifest.json' %}">
-    <meta name="theme-color" content="#1a5f4a">
+    <!-- ============================================================
+         PWA MANIFEST & THEME
+         ============================================================ -->
+    <link rel="manifest" href="{% static 'manifest.json' %}" crossorigin="use-credentials">
+    <meta name="theme-color" content="#1a5f4a" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#145040" media="(prefers-color-scheme: dark)">
+    <meta name="color-scheme" content="light dark">
+    
+    <!-- ============================================================
+         APPLE iOS PWA SUPPORT
+         ============================================================ -->
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Irish History">
+    <link rel="apple-touch-icon" href="{% static 'images/icon-180.png' %}">
+    <link rel="apple-touch-icon" sizes="152x152" href="{% static 'images/icon-152.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'images/icon-180.png' %}">
+    <link rel="apple-touch-icon" sizes="167x167" href="{% static 'images/icon-167.png' %}">
+    
+    <!-- Apple Splash Screens (iPad & iPhone) -->
+    <link rel="apple-touch-startup-image" href="{% static 'images/splash-640x1136.png' %}" media="(device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="{% static 'images/splash-750x1334.png' %}" media="(device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2)">
+    <link rel="apple-touch-startup-image" href="{% static 'images/splash-1242x2208.png' %}" media="(device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="{% static 'images/splash-1125x2436.png' %}" media="(device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3)">
+    <link rel="apple-touch-startup-image" href="{% static 'images/splash-1536x2048.png' %}" media="(min-device-width: 768px) and (max-device-width: 1024px) and (-webkit-device-pixel-ratio: 2)">
 
-    <!-- CSRF Token for API requests -->
+    <!-- ============================================================
+         MICROSOFT/WINDOWS PWA SUPPORT
+         ============================================================ -->
+    <meta name="msapplication-TileColor" content="#1a5f4a">
+    <meta name="msapplication-TileImage" content="{% static 'images/icon-144.png' %}">
+    <meta name="msapplication-config" content="{% static 'browserconfig.xml' %}">
+
+    <!-- ============================================================
+         OPEN GRAPH / SOCIAL SHARING
+         ============================================================ -->
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Irish Historical Sites GIS">
+    <meta property="og:description" content="Explore Ireland's rich historical heritage through an interactive map featuring castles, monasteries, ancient monuments and archaeological sites.">
+    <meta property="og:image" content="{% static 'images/og-image.png' %}">
+    <meta property="og:url" content="{{ request.build_absolute_uri }}">
+    <meta property="og:site_name" content="Irish Historical Sites">
+    <meta property="og:locale" content="en_IE">
+    
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Irish Historical Sites GIS">
+    <meta name="twitter:description" content="Explore Ireland's rich historical heritage through an interactive map.">
+    <meta name="twitter:image" content="{% static 'images/og-image.png' %}">
+
+    <!-- ============================================================
+         SECURITY & PERFORMANCE
+         ============================================================ -->
     <meta name="csrf-token" content="{{ csrf_token }}">
+    <link rel="dns-prefetch" href="https://unpkg.com">
+    <link rel="dns-prefetch" href="https://tile.openstreetmap.org">
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
 
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -116,5 +171,237 @@
     <script src="{% static 'js/i18n.js' %}?v=3"></script>
 
     {% block extra_js %}{% endblock %}
+
+    <!-- ============================================================
+         PWA SERVICE WORKER REGISTRATION & INSTALL PROMPT
+         ============================================================ -->
+    <script>
+    (function() {
+        'use strict';
+        
+        // Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    // Register Service Worker from root path (served via custom view with proper headers)
+                    // The Service Worker is served at /sw.js with Service-Worker-Allowed header set to '/'
+                    // This allows the SW to control the entire site even though the source file is in /static/js/
+                    const registration = await navigator.serviceWorker.register('/sw.js', {
+                        scope: '/'
+                    });
+                    
+                    console.log('[PWA] Service Worker registered:', registration.scope);
+                    
+                    // Check for updates periodically
+                    setInterval(() => {
+                        registration.update();
+                    }, 60 * 60 * 1000); // Check every hour
+                    
+                    // Handle updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        console.log('[PWA] New Service Worker installing...');
+                        
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                // New version available
+                                showUpdateNotification();
+                            }
+                        });
+                    });
+                    
+                } catch (error) {
+                    console.error('[PWA] Service Worker registration failed:', error);
+                }
+            });
+            
+            // Handle controller change (new SW activated)
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('[PWA] New Service Worker activated');
+            });
+        }
+        
+        // PWA Install Prompt
+        let deferredPrompt = null;
+        let installButton = null;
+        
+        window.addEventListener('beforeinstallprompt', (e) => {
+            console.log('[PWA] Install prompt available');
+            e.preventDefault();
+            deferredPrompt = e;
+            showInstallButton();
+        });
+        
+        window.addEventListener('appinstalled', () => {
+            console.log('[PWA] App installed successfully');
+            deferredPrompt = null;
+            hideInstallButton();
+            showToastMessage('App installed! You can now use it offline.', 'success');
+        });
+        
+        function showInstallButton() {
+            // Create install button if not exists
+            if (!installButton) {
+                installButton = document.createElement('button');
+                installButton.id = 'pwa-install-btn';
+                installButton.className = 'pwa-install-button';
+                installButton.innerHTML = `
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                        <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/>
+                    </svg>
+                    <span>Install App</span>
+                `;
+                installButton.addEventListener('click', installPWA);
+                
+                // Add styles
+                const style = document.createElement('style');
+                style.textContent = `
+                    .pwa-install-button {
+                        position: fixed;
+                        bottom: 20px;
+                        right: 20px;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 12px 20px;
+                        background: linear-gradient(135deg, #ff8c00, #ffa333);
+                        color: white;
+                        border: none;
+                        border-radius: 50px;
+                        font-size: 14px;
+                        font-weight: 600;
+                        cursor: pointer;
+                        box-shadow: 0 4px 15px rgba(255, 140, 0, 0.4);
+                        z-index: 9999;
+                        animation: slideIn 0.3s ease-out;
+                        transition: all 0.2s ease;
+                    }
+                    .pwa-install-button:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 6px 20px rgba(255, 140, 0, 0.5);
+                    }
+                    @keyframes slideIn {
+                        from { transform: translateY(100px); opacity: 0; }
+                        to { transform: translateY(0); opacity: 1; }
+                    }
+                    .pwa-install-button.hidden {
+                        display: none;
+                    }
+                    @media (max-width: 768px) {
+                        .pwa-install-button {
+                            bottom: 80px;
+                        }
+                    }
+                    
+                    /* Update notification */
+                    .pwa-update-notification {
+                        position: fixed;
+                        top: 80px;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        padding: 12px 20px;
+                        background: var(--bg-card, white);
+                        border-radius: 12px;
+                        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+                        z-index: 10000;
+                        animation: slideDown 0.3s ease-out;
+                    }
+                    @keyframes slideDown {
+                        from { transform: translateX(-50%) translateY(-100px); opacity: 0; }
+                        to { transform: translateX(-50%) translateY(0); opacity: 1; }
+                    }
+                    .pwa-update-notification button {
+                        padding: 8px 16px;
+                        border: none;
+                        border-radius: 6px;
+                        font-weight: 600;
+                        cursor: pointer;
+                    }
+                    .pwa-update-notification .update-btn {
+                        background: #1a5f4a;
+                        color: white;
+                    }
+                    .pwa-update-notification .dismiss-btn {
+                        background: transparent;
+                        color: var(--text-muted, #666);
+                    }
+                `;
+                document.head.appendChild(style);
+                document.body.appendChild(installButton);
+            }
+            installButton.classList.remove('hidden');
+        }
+        
+        function hideInstallButton() {
+            if (installButton) {
+                installButton.classList.add('hidden');
+            }
+        }
+        
+        async function installPWA() {
+            if (!deferredPrompt) return;
+            
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            console.log('[PWA] Install prompt outcome:', outcome);
+            
+            deferredPrompt = null;
+            hideInstallButton();
+        }
+        
+        function showUpdateNotification() {
+            const notification = document.createElement('div');
+            notification.className = 'pwa-update-notification';
+            notification.innerHTML = `
+                <span>A new version is available!</span>
+                <button class="update-btn" onclick="updateApp()">Update</button>
+                <button class="dismiss-btn" onclick="this.parentElement.remove()">Later</button>
+            `;
+            document.body.appendChild(notification);
+        }
+        
+        window.updateApp = function() {
+            if (navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
+            }
+            window.location.reload();
+        };
+        
+        function showToastMessage(message, type) {
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type} show`;
+            toast.innerHTML = `
+                <span class="toast-icon">${type === 'success' ? '✓' : 'ℹ'}</span>
+                <span class="toast-message">${message}</span>
+            `;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+        
+        // Check if running as installed PWA
+        if (window.matchMedia('(display-mode: standalone)').matches || 
+            window.navigator.standalone === true) {
+            console.log('[PWA] Running as installed app');
+            document.documentElement.classList.add('pwa-standalone');
+        }
+        
+        // Online/Offline status handling
+        window.addEventListener('online', () => {
+            console.log('[PWA] Back online');
+            document.body.classList.remove('offline');
+            showToastMessage('You\'re back online!', 'success');
+        });
+        
+        window.addEventListener('offline', () => {
+            console.log('[PWA] Gone offline');
+            document.body.classList.add('offline');
+            showToastMessage('You\'re offline. Some features may be limited.', 'warning');
+        });
+        
+    })();
+    </script>
 </body>
 </html>

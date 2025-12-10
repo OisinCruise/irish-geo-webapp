@@ -56,7 +56,7 @@ def import_image_urls(csv_file):
                 title_en = row.get('title_en', '').strip()
                 caption_en = row.get('caption_en', '').strip()
 
-                if not site_id or not image_url:
+                if not image_url:
                     skipped += 1
                     continue
 
@@ -65,11 +65,24 @@ def import_image_urls(csv_file):
                     skipped += 1
                     continue
 
-                # Check if site exists
-                try:
-                    site = HistoricalSite.objects.get(id=int(site_id))
-                except HistoricalSite.DoesNotExist:
-                    print(f"  ✗ Site {site_id} not found")
+                # Try to find site by name (title_en) first, then by ID
+                site = None
+                if title_en:
+                    # Try exact match first
+                    site = HistoricalSite.objects.filter(name_en=title_en).first()
+                    # If no exact match, try case-insensitive contains
+                    if not site:
+                        site = HistoricalSite.objects.filter(name_en__icontains=title_en.split(',')[0]).first()
+                
+                # Fallback to ID if provided
+                if not site and site_id:
+                    try:
+                        site = HistoricalSite.objects.get(id=int(site_id))
+                    except (HistoricalSite.DoesNotExist, ValueError):
+                        pass
+                
+                if not site:
+                    print(f"  ✗ Site not found: {title_en[:50] if title_en else site_id}")
                     errors += 1
                     continue
 

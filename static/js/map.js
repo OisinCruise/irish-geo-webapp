@@ -23,6 +23,55 @@
     'use strict';
 
     // ===========================================================================
+    // GLOBAL FUNCTIONS (must be defined early for inline handlers)
+    // ===========================================================================
+    
+    /**
+     * Toggle description expand/collapse - defined early for popup onclick handlers
+     * CRITICAL: Must be on window object to be accessible from inline onclick handlers
+     */
+    window.toggleDescription = function(uniqueId) {
+        try {
+            // Find elements - use more robust selectors
+            const shortDesc = document.getElementById(`${uniqueId}-short`);
+            const fullDesc = document.getElementById(`${uniqueId}-full`);
+            
+            if (!shortDesc || !fullDesc) {
+                console.warn(`toggleDescription: Elements not found for ${uniqueId}`);
+                return;
+            }
+            
+            // Find button - search from container to ensure we get the right one
+            const container = shortDesc.closest('.popup-description-container');
+            const btn = container ? container.querySelector('.btn-expand-desc') : null;
+            
+            if (!btn) {
+                console.warn(`toggleDescription: Button not found for ${uniqueId}`);
+                return;
+            }
+            
+            const isExpanded = btn.getAttribute('data-expanded') === 'true';
+            const expandText = btn.querySelector('.expand-text');
+            
+            if (isExpanded) {
+                // Collapse - show short, hide full
+                shortDesc.style.display = 'block';
+                fullDesc.style.display = 'none';
+                btn.setAttribute('data-expanded', 'false');
+                if (expandText) expandText.textContent = 'Read more';
+            } else {
+                // Expand - hide short, show full
+                shortDesc.style.display = 'none';
+                fullDesc.style.display = 'block';
+                btn.setAttribute('data-expanded', 'true');
+                if (expandText) expandText.textContent = 'Show less';
+            }
+        } catch (error) {
+            console.error('Error in toggleDescription:', error);
+        }
+    };
+
+    // ===========================================================================
     // CONFIGURATION
     // ===========================================================================
 
@@ -393,8 +442,10 @@
             let url = CONFIG.api.sites;
             const params = new URLSearchParams();
 
-            // Request a large page size to get all sites (or at least many)
-            params.append('page_size', '2000');
+            // CRITICAL: Reduced page size for Render Free tier (512MB RAM)
+            // Loading too many sites at once causes OOM errors
+            // Use viewport-based loading when possible, otherwise limit to 100
+            params.append('page_size', '100');
 
             // Apply filters
             if (currentFilters.era) params.append('era', currentFilters.era);
@@ -459,6 +510,8 @@
 
     /**
      * Display sites on the map
+     * CRITICAL FIX: Add markers directly to cluster group, not to both sitesLayer and cluster
+     * This prevents double memory usage (each marker stored twice)
      */
     function displaySites(geojsonData) {
         console.log('displaySites called with:', {
@@ -467,30 +520,39 @@
             type: geojsonData.type
         });
 
-        // Clear existing markers
+        // Clear existing markers from cluster group
         if (markersCluster) {
             markersCluster.clearLayers();
         }
+        // Clear sitesLayer if it exists (for cleanup, but we won't use it for storage)
         if (sitesLayer) {
             sitesLayer.clearLayers();
         }
 
-        // Add new data
+        // Add new data directly to cluster group to avoid double storage
         if (geojsonData && geojsonData.features && geojsonData.features.length > 0) {
             console.log(`Adding ${geojsonData.features.length} features to map`);
             
-            // Add data to GeoJSON layer (this creates individual markers)
-            sitesLayer.addData(geojsonData);
+            // Create a temporary GeoJSON layer to process features
+            // This creates markers but we'll immediately move them to cluster
+            const tempLayer = L.geoJSON(geojsonData, {
+                pointToLayer: createSiteMarker,
+                onEachFeature: onEachSiteFeature
+            });
             
-            // Collect all layers created by addData and add them to cluster
+            // Collect all layers and add directly to cluster (not to sitesLayer)
             const layers = [];
-            sitesLayer.eachLayer(function(layer) {
+            tempLayer.eachLayer(function(layer) {
                 layers.push(layer);
             });
             
+            // Add all layers to cluster group at once (more efficient)
             if (layers.length > 0) {
                 markersCluster.addLayers(layers);
                 console.log(`Successfully added ${layers.length} markers to cluster group`);
+                
+                // Clear temp layer to free memory (markers are now in cluster)
+                tempLayer.clearLayers();
             } else {
                 console.warn('No layers created from GeoJSON data - check pointToLayer function');
             }
@@ -666,11 +728,14 @@
             
             if (needsTruncation) {
                 const uniqueId = `desc-${props.id || Date.now()}`;
+                // CRITICAL: Use proper event handler binding to ensure function is accessible
+                // Escape the uniqueId to prevent XSS and ensure proper string handling
+                const escapedUniqueId = uniqueId.replace(/'/g, "\\'");
                 html += `
                     <div class="popup-description-container">
                         <p class="popup-description" id="${uniqueId}-short">${escapeHtml(truncatedDesc)}<span class="description-ellipsis">...</span></p>
                         <p class="popup-description popup-description-full" id="${uniqueId}-full" style="display: none;">${escapeHtml(description)}</p>
-                        <button class="btn-expand-desc" onclick="window.toggleDescription('${uniqueId}')" data-expanded="false">
+                        <button class="btn-expand-desc" onclick="if(window.toggleDescription){window.toggleDescription('${escapedUniqueId}');}else{console.error('toggleDescription not available');}" data-expanded="false" type="button">
                             <span class="expand-text">Read more</span>
                         </button>
                     </div>
@@ -1535,14 +1600,25 @@
     // EVENT LISTENERS
     // ===========================================================================
 
+    // Store event listener references for cleanup
+    const eventListeners = {
+        languageChanged: null,
+        keydown: null,
+        beforeunload: null
+    };
+
     function setupEventListeners() {
+        // Clean up existing listeners first (prevent duplicates)
+        cleanupEventListeners();
+
         // Listen for language changes
-        document.addEventListener('languageChanged', function(e) {
+        eventListeners.languageChanged = function(e) {
             loadSites();
-        });
+        };
+        document.addEventListener('languageChanged', eventListeners.languageChanged);
 
         // Handle keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
+        eventListeners.keydown = function(e) {
             if (e.key === 'Escape') {
                 deactivateOtherTools('none');
 
@@ -1553,7 +1629,43 @@
                     document.getElementById('filterBtn')?.classList.remove('active');
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', eventListeners.keydown);
+
+        // Cleanup on page unload to prevent memory leaks
+        eventListeners.beforeunload = function() {
+            cleanupEventListeners();
+            // Clean up map and layers
+            if (map) {
+                map.remove();
+                map = null;
+            }
+            if (markersCluster) {
+                markersCluster.clearLayers();
+                markersCluster = null;
+            }
+            if (sitesLayer) {
+                sitesLayer.clearLayers();
+                sitesLayer = null;
+            }
+        };
+        window.addEventListener('beforeunload', eventListeners.beforeunload);
+    }
+
+    function cleanupEventListeners() {
+        // Remove all event listeners to prevent memory leaks
+        if (eventListeners.languageChanged) {
+            document.removeEventListener('languageChanged', eventListeners.languageChanged);
+            eventListeners.languageChanged = null;
+        }
+        if (eventListeners.keydown) {
+            document.removeEventListener('keydown', eventListeners.keydown);
+            eventListeners.keydown = null;
+        }
+        if (eventListeners.beforeunload) {
+            window.removeEventListener('beforeunload', eventListeners.beforeunload);
+            eventListeners.beforeunload = null;
+        }
     }
 
     // ===========================================================================
@@ -1942,32 +2054,6 @@
         showToast('Opening Google Maps directions...', 'info');
     };
 
-    /**
-     * Toggle description expand/collapse
-     */
-    window.toggleDescription = function(uniqueId) {
-        const shortDesc = document.getElementById(`${uniqueId}-short`);
-        const fullDesc = document.getElementById(`${uniqueId}-full`);
-        const btn = shortDesc?.parentElement?.querySelector('.btn-expand-desc');
-        
-        if (!shortDesc || !fullDesc || !btn) return;
-        
-        const isExpanded = btn.getAttribute('data-expanded') === 'true';
-        
-        if (isExpanded) {
-            // Collapse
-            shortDesc.style.display = 'block';
-            fullDesc.style.display = 'none';
-            btn.setAttribute('data-expanded', 'false');
-            btn.querySelector('.expand-text').textContent = 'Read more';
-        } else {
-            // Expand
-            shortDesc.style.display = 'none';
-            fullDesc.style.display = 'block';
-            btn.setAttribute('data-expanded', 'true');
-            btn.querySelector('.expand-text').textContent = 'Show less';
-        }
-    };
 
     /**
      * Get CSRF token from cookie or meta tag
@@ -2039,16 +2125,40 @@
     };
 
     // Auto-initialize if map container exists
+    let initHandler = null;
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
+        initHandler = function() {
             if (document.getElementById('map')) {
                 initMap();
             }
-        });
+            // Remove listener after initialization to prevent memory leak
+            document.removeEventListener('DOMContentLoaded', initHandler);
+        };
+        document.addEventListener('DOMContentLoaded', initHandler);
     } else {
+        // DOM already loaded
         if (document.getElementById('map')) {
             initMap();
         }
+    }
+
+    // Export cleanup function for external use if needed
+    if (typeof window !== 'undefined') {
+        window.cleanupMapMemory = function() {
+            cleanupEventListeners();
+            if (map) {
+                map.remove();
+                map = null;
+            }
+            if (markersCluster) {
+                markersCluster.clearLayers();
+                markersCluster = null;
+            }
+            if (sitesLayer) {
+                sitesLayer.clearLayers();
+                sitesLayer = null;
+            }
+        };
     }
 
 })();

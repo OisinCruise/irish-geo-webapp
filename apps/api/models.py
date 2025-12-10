@@ -1,3 +1,1 @@
-from django.db import models
-
-# Create your models here.
+# Models defined in apps/sites/models.py and apps/geography/models.py

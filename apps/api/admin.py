@@ -1,3 +1,1 @@
-from django.contrib import admin
-
-# Register your models here.
+# Admin handled by apps/sites/admin.py and apps/geography/admin.py

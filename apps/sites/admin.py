@@ -1,11 +1,22 @@
-"""Django admin configuration for Historical Sites models"""
+"""
+Django admin configuration for sites models
+
+This sets up the admin interface so I can manage sites, images, and sources
+through Django's admin panel. I've organized the fields into fieldsets to
+make it easier to edit.
+"""
 from django.contrib.gis import admin
 from django.utils.html import format_html
 from .models import HistoricalSite, SiteImage, SiteSource
 
 
 class SiteImageInline(admin.TabularInline):
-    """Inline admin for site images"""
+    """
+    Inline editor for images
+    
+    Lets me add/edit images directly on the site edit page instead of
+    having to go to a separate page. Shows one empty row by default.
+    """
     model = SiteImage
     extra = 1
     fields = ['image_url', 'title_en', 'is_primary', 'display_order']
@@ -13,7 +24,11 @@ class SiteImageInline(admin.TabularInline):
 
 
 class SiteSourceInline(admin.TabularInline):
-    """Inline admin for site sources"""
+    """
+    Inline editor for sources
+    
+    Same idea - can add sources right on the site page.
+    """
     model = SiteSource
     extra = 1
     fields = ['source_type', 'title', 'author', 'reliability_score']
@@ -21,7 +36,13 @@ class SiteSourceInline(admin.TabularInline):
 
 @admin.register(HistoricalSite)
 class HistoricalSiteAdmin(admin.GISModelAdmin):
-    """Admin interface for HistoricalSite model"""
+    """
+    Admin interface for sites
+    
+    Uses GISModelAdmin so I can edit the location on a map widget. I've
+    organized fields into fieldsets to make editing easier. The actions
+    let me bulk-approve or reject sites.
+    """
     list_display = [
         'name_en', 'site_type', 'county', 'era', 
         'significance_level', 'national_monument', 
@@ -81,7 +102,12 @@ class HistoricalSiteAdmin(admin.GISModelAdmin):
     actions = ['approve_sites', 'reject_sites', 'mark_as_national_monuments']
     
     def approve_sites(self, request, queryset):
-        """Bulk approve sites"""
+        """
+        Bulk approves selected sites
+        
+        Updates approval status and records who approved them and when.
+        Useful when reviewing a bunch of pending sites at once.
+        """
         from django.utils import timezone
         count = queryset.update(
             approval_status='approved',
@@ -92,13 +118,18 @@ class HistoricalSiteAdmin(admin.GISModelAdmin):
     approve_sites.short_description = "Approve selected sites"
     
     def reject_sites(self, request, queryset):
-        """Bulk reject sites"""
+        """Bulk rejects selected sites"""
         count = queryset.update(approval_status='rejected')
         self.message_user(request, f"{count} sites rejected")
     reject_sites.short_description = "Reject selected sites"
     
     def mark_as_national_monuments(self, request, queryset):
-        """Mark sites as national monuments"""
+        """
+        Marks selected sites as national monuments
+        
+        Useful for bulk updating when I get a list of newly designated
+        monuments.
+        """
         count = queryset.update(national_monument=True)
         self.message_user(request, f"{count} sites marked as national monuments")
     mark_as_national_monuments.short_description = "Mark as National Monuments"
@@ -106,7 +137,12 @@ class HistoricalSiteAdmin(admin.GISModelAdmin):
 
 @admin.register(SiteImage)
 class SiteImageAdmin(admin.ModelAdmin):
-    """Admin interface for SiteImage model"""
+    """
+    Admin interface for images
+    
+    Lets me manage images separately if needed. Most of the time I use
+    the inline editor on the site page, but this is useful for bulk edits.
+    """
     list_display = ['site', 'title_en', 'is_primary', 'display_order', 'photographer', 'created_at']
     search_fields = ['title_en', 'title_ga', 'photographer', 'site__name_en']
     list_filter = ['is_primary', 'is_deleted', 'created_at']
@@ -141,7 +177,12 @@ class SiteImageAdmin(admin.ModelAdmin):
 
 @admin.register(SiteSource)
 class SiteSourceAdmin(admin.ModelAdmin):
-    """Admin interface for SiteSource model"""
+    """
+    Admin interface for sources
+    
+    Same idea - can manage sources separately or use the inline editor.
+    The citation field is read-only since it's computed from other fields.
+    """
     list_display = ['title', 'author', 'source_type', 'publication_year', 'reliability_score', 'site']
     search_fields = ['title', 'author', 'site__name_en']
     list_filter = ['source_type', 'reliability_score', 'is_deleted']

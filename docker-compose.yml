@@ -99,4 +99,3 @@ volumes:
 networks:
   irish_geo_network:
     driver: bridge
-

@@ -151,23 +151,32 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """
-        CRITICAL: Memory-efficient list view using iterator() to process sites in chunks.
+        CRITICAL: Memory-efficient list view using pagination.
         Prevents loading all sites into memory at once, which causes OOM errors.
         """
-        queryset = self.filter_queryset(self.get_queryset())
-        
-        # Apply pagination
-        page = self.paginate_queryset(queryset)
-        if page is not None:
-            # Use iterator() to process paginated results without loading all into memory
-            # This is critical for memory efficiency with large datasets
-            serializer = self.get_serializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        
-        # Fallback: limit results if pagination not available
-        queryset = queryset[:100]
-        serializer = self.get_serializer(queryset, many=True)
-        return Response(serializer.data)
+        try:
+            queryset = self.filter_queryset(self.get_queryset())
+            
+            # Apply pagination - this is critical for memory efficiency
+            page = self.paginate_queryset(queryset)
+            if page is not None:
+                serializer = self.get_serializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+            
+            # Fallback: limit results if pagination not available
+            # This should rarely happen as pagination is enabled by default
+            queryset = queryset[:100]
+            serializer = self.get_serializer(queryset, many=True)
+            return Response(serializer.data)
+        except Exception as e:
+            # Log error and return safe response to prevent 502
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f'Error in HistoricalSiteViewSet.list: {str(e)}', exc_info=True)
+            return Response(
+                {'error': 'Failed to load sites', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -392,63 +401,74 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
         Generates GeoJSON directly in the database and streams the response.
         """
         import json
+        import logging
         from django.db import connection
         
-        # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
-        # This prevents OOM errors by never loading MultiPolygon objects into Python
-        # Note: ORDER BY must be inside json_agg() when using aggregate functions
-        sql = """
-        SELECT json_build_object(
-            'type', 'FeatureCollection',
-            'features', json_agg(
-                json_build_object(
-                    'type', 'Feature',
-                    'geometry', ST_AsGeoJSON(
-                        ST_Multi(ST_SimplifyPreserveTopology(p.geometry, 0.005))
-                    )::json,
-                    'properties', json_build_object(
-                        'id', p.id,
-                        'name_en', p.name_en,
-                        'name_ga', p.name_ga,
-                        'code', p.code,
-                        'area_km2', p.area_km2,
-                        'population', p.population,
-                        'description_en', LEFT(p.description_en, 500),
-                        'description_ga', LEFT(p.description_ga, 500),
-                        'county_count', (
-                            SELECT COUNT(DISTINCT c.id)
-                            FROM county c
-                            WHERE c.province_id = p.id
-                            AND c.is_deleted = false
-                        ),
-                        'site_count', (
-                            SELECT COUNT(*)
-                            FROM historical_site hs
-                            JOIN county c ON hs.county_id = c.id
-                            WHERE c.province_id = p.id
-                            AND hs.is_deleted = false
-                            AND hs.approval_status = 'approved'
-                        )
-                    )
-                ) ORDER BY p.name_en
-            )
-        )
-        FROM province p
-        WHERE p.is_deleted = false
-        """
+        logger = logging.getLogger(__name__)
         
-        with connection.cursor() as cursor:
-            cursor.execute(sql)
-            result = cursor.fetchone()[0]
+        try:
+            # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
+            # This prevents OOM errors by never loading MultiPolygon objects into Python
+            # Note: ORDER BY must be inside json_agg() when using aggregate functions
+            sql = """
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', json_agg(
+                    json_build_object(
+                        'type', 'Feature',
+                        'geometry', ST_AsGeoJSON(
+                            ST_Multi(ST_SimplifyPreserveTopology(p.geometry, 0.005))
+                        )::json,
+                        'properties', json_build_object(
+                            'id', p.id,
+                            'name_en', p.name_en,
+                            'name_ga', p.name_ga,
+                            'code', p.code,
+                            'area_km2', p.area_km2,
+                            'population', p.population,
+                            'description_en', LEFT(p.description_en, 500),
+                            'description_ga', LEFT(p.description_ga, 500),
+                            'county_count', (
+                                SELECT COUNT(DISTINCT c.id)
+                                FROM county c
+                                WHERE c.province_id = p.id
+                                AND c.is_deleted = false
+                            ),
+                            'site_count', (
+                                SELECT COUNT(*)
+                                FROM historical_site hs
+                                JOIN county c ON hs.county_id = c.id
+                                WHERE c.province_id = p.id
+                                AND hs.is_deleted = false
+                                AND hs.approval_status = 'approved'
+                            )
+                        )
+                    ) ORDER BY p.name_en
+                )
+            )
+            FROM province p
+            WHERE p.is_deleted = false
+            """
             
-            # If no results, return empty FeatureCollection
-            if not result or result.get('features') is None:
-                return Response({
-                    'type': 'FeatureCollection',
-                    'features': []
-                })
-            
-            return Response(result)
+            with connection.cursor() as cursor:
+                cursor.execute(sql)
+                result = cursor.fetchone()[0]
+                
+                # If no results, return empty FeatureCollection
+                if not result or result.get('features') is None:
+                    return Response({
+                        'type': 'FeatureCollection',
+                        'features': []
+                    })
+                
+                return Response(result)
+        except Exception as e:
+            logger.error(f'Error in ProvinceViewSet.list: {str(e)}', exc_info=True)
+            # Return empty FeatureCollection on error to prevent 502
+            return Response({
+                'type': 'FeatureCollection',
+                'features': []
+            }, status=status.HTTP_200_OK)  # Return 200 with empty data rather than 500
 
     def get_queryset(self):
         """
@@ -500,70 +520,81 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         Generates GeoJSON directly in the database and streams the response.
         """
         import json
+        import logging
         from django.db import connection
         
-        # Build WHERE clause based on filters
-        where_clauses = ["c.is_deleted = false"]
-        params = []
+        logger = logging.getLogger(__name__)
         
-        if 'province' in request.query_params:
-            where_clauses.append("c.province_id = %s")
-            params.append(request.query_params['province'])
-        
-        where_sql = " AND ".join(where_clauses)
-        
-        # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
-        # This prevents OOM errors by never loading MultiPolygon objects into Python
-        # Note: ORDER BY must be inside json_agg() when using aggregate functions
-        sql = f"""
-        SELECT json_build_object(
-            'type', 'FeatureCollection',
-            'features', json_agg(
-                json_build_object(
-                    'type', 'Feature',
-                    'geometry', ST_AsGeoJSON(
-                        ST_Multi(ST_SimplifyPreserveTopology(c.geometry, 0.003))
-                    )::json,
-                    'properties', json_build_object(
-                        'id', c.id,
-                        'name_en', c.name_en,
-                        'name_ga', c.name_ga,
-                        'code', c.code,
-                        'province', c.province_id,
-                        'province_name', p.name_en,
-                        'province_code', p.code,
-                        'area_km2', c.area_km2,
-                        'population', c.population,
-                        'description_en', LEFT(c.description_en, 500),
-                        'description_ga', LEFT(c.description_ga, 500),
-                        'site_count', (
-                            SELECT COUNT(*) 
-                            FROM historical_site hs 
-                            WHERE hs.county_id = c.id 
-                            AND hs.is_deleted = false 
-                            AND hs.approval_status = 'approved'
+        try:
+            # Build WHERE clause based on filters
+            where_clauses = ["c.is_deleted = false"]
+            params = []
+            
+            if 'province' in request.query_params:
+                where_clauses.append("c.province_id = %s")
+                params.append(request.query_params['province'])
+            
+            where_sql = " AND ".join(where_clauses)
+            
+            # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
+            # This prevents OOM errors by never loading MultiPolygon objects into Python
+            # Note: ORDER BY must be inside json_agg() when using aggregate functions
+            sql = f"""
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', json_agg(
+                    json_build_object(
+                        'type', 'Feature',
+                        'geometry', ST_AsGeoJSON(
+                            ST_Multi(ST_SimplifyPreserveTopology(c.geometry, 0.003))
+                        )::json,
+                        'properties', json_build_object(
+                            'id', c.id,
+                            'name_en', c.name_en,
+                            'name_ga', c.name_ga,
+                            'code', c.code,
+                            'province', c.province_id,
+                            'province_name', p.name_en,
+                            'province_code', p.code,
+                            'area_km2', c.area_km2,
+                            'population', c.population,
+                            'description_en', LEFT(c.description_en, 500),
+                            'description_ga', LEFT(c.description_ga, 500),
+                            'site_count', (
+                                SELECT COUNT(*) 
+                                FROM historical_site hs 
+                                WHERE hs.county_id = c.id 
+                                AND hs.is_deleted = false 
+                                AND hs.approval_status = 'approved'
+                            )
                         )
-                    )
-                ) ORDER BY c.name_en
+                    ) ORDER BY c.name_en
+                )
             )
-        )
-        FROM county c
-        LEFT JOIN province p ON c.province_id = p.id
-        WHERE {where_sql}
-        """
-        
-        with connection.cursor() as cursor:
-            cursor.execute(sql, params)
-            result = cursor.fetchone()[0]
+            FROM county c
+            LEFT JOIN province p ON c.province_id = p.id
+            WHERE {where_sql}
+            """
             
-            # If no results, return empty FeatureCollection
-            if not result or result.get('features') is None:
-                return Response({
-                    'type': 'FeatureCollection',
-                    'features': []
-                })
-            
-            return Response(result)
+            with connection.cursor() as cursor:
+                cursor.execute(sql, params)
+                result = cursor.fetchone()[0]
+                
+                # If no results, return empty FeatureCollection
+                if not result or result.get('features') is None:
+                    return Response({
+                        'type': 'FeatureCollection',
+                        'features': []
+                    })
+                
+                return Response(result)
+        except Exception as e:
+            logger.error(f'Error in CountyViewSet.list: {str(e)}', exc_info=True)
+            # Return empty FeatureCollection on error to prevent 502
+            return Response({
+                'type': 'FeatureCollection',
+                'features': []
+            }, status=status.HTTP_200_OK)  # Return 200 with empty data rather than 500
 
     def get_queryset(self):
         """

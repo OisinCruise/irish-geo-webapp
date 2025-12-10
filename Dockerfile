@@ -75,8 +75,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health/')" || exit 1
 
 # Default command
-# Optimized for Render FREE tier (512MB RAM)
+# CRITICAL: Optimized for Render FREE tier (512MB RAM)
 # 1 worker with 2 threads - essential for memory constraints
 # Timeout set to 120s (Render default) with graceful shutdown
-# max-requests helps prevent memory leaks in long-running processes
-CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "2", "--timeout", "120", "--graceful-timeout", "30", "--max-requests", "500", "--max-requests-jitter", "50", "--worker-class", "gthread"]
+# max-requests reduced to prevent memory accumulation
+# preload app to reduce memory per worker (shared memory)
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "1", "--threads", "2", "--timeout", "120", "--graceful-timeout", "30", "--max-requests", "250", "--max-requests-jitter", "25", "--worker-class", "gthread", "--preload"]

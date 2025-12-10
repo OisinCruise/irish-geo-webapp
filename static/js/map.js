@@ -393,9 +393,10 @@
             let url = CONFIG.api.sites;
             const params = new URLSearchParams();
 
-            // Request reasonable page size to prevent memory issues on B1 Basic tier
-            // Reduced from 2000 to 200 to prevent OOM kills
-            params.append('page_size', '200');
+            // CRITICAL: Reduced page size for Render Free tier (512MB RAM)
+            // Loading too many sites at once causes OOM errors
+            // Use viewport-based loading when possible, otherwise limit to 100
+            params.append('page_size', '100');
 
             // Apply filters
             if (currentFilters.era) params.append('era', currentFilters.era);
@@ -460,6 +461,8 @@
 
     /**
      * Display sites on the map
+     * CRITICAL FIX: Add markers directly to cluster group, not to both sitesLayer and cluster
+     * This prevents double memory usage (each marker stored twice)
      */
     function displaySites(geojsonData) {
         console.log('displaySites called with:', {
@@ -468,30 +471,39 @@
             type: geojsonData.type
         });
 
-        // Clear existing markers
+        // Clear existing markers from cluster group
         if (markersCluster) {
             markersCluster.clearLayers();
         }
+        // Clear sitesLayer if it exists (for cleanup, but we won't use it for storage)
         if (sitesLayer) {
             sitesLayer.clearLayers();
         }
 
-        // Add new data
+        // Add new data directly to cluster group to avoid double storage
         if (geojsonData && geojsonData.features && geojsonData.features.length > 0) {
             console.log(`Adding ${geojsonData.features.length} features to map`);
             
-            // Add data to GeoJSON layer (this creates individual markers)
-            sitesLayer.addData(geojsonData);
+            // Create a temporary GeoJSON layer to process features
+            // This creates markers but we'll immediately move them to cluster
+            const tempLayer = L.geoJSON(geojsonData, {
+                pointToLayer: createSiteMarker,
+                onEachFeature: onEachSiteFeature
+            });
             
-            // Collect all layers created by addData and add them to cluster
+            // Collect all layers and add directly to cluster (not to sitesLayer)
             const layers = [];
-            sitesLayer.eachLayer(function(layer) {
+            tempLayer.eachLayer(function(layer) {
                 layers.push(layer);
             });
             
+            // Add all layers to cluster group at once (more efficient)
             if (layers.length > 0) {
                 markersCluster.addLayers(layers);
                 console.log(`Successfully added ${layers.length} markers to cluster group`);
+                
+                // Clear temp layer to free memory (markers are now in cluster)
+                tempLayer.clearLayers();
             } else {
                 console.warn('No layers created from GeoJSON data - check pointToLayer function');
             }
@@ -1536,14 +1548,25 @@
     // EVENT LISTENERS
     // ===========================================================================
 
+    // Store event listener references for cleanup
+    const eventListeners = {
+        languageChanged: null,
+        keydown: null,
+        beforeunload: null
+    };
+
     function setupEventListeners() {
+        // Clean up existing listeners first (prevent duplicates)
+        cleanupEventListeners();
+
         // Listen for language changes
-        document.addEventListener('languageChanged', function(e) {
+        eventListeners.languageChanged = function(e) {
             loadSites();
-        });
+        };
+        document.addEventListener('languageChanged', eventListeners.languageChanged);
 
         // Handle keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
+        eventListeners.keydown = function(e) {
             if (e.key === 'Escape') {
                 deactivateOtherTools('none');
 
@@ -1554,7 +1577,43 @@
                     document.getElementById('filterBtn')?.classList.remove('active');
                 }
             }
-        });
+        };
+        document.addEventListener('keydown', eventListeners.keydown);
+
+        // Cleanup on page unload to prevent memory leaks
+        eventListeners.beforeunload = function() {
+            cleanupEventListeners();
+            // Clean up map and layers
+            if (map) {
+                map.remove();
+                map = null;
+            }
+            if (markersCluster) {
+                markersCluster.clearLayers();
+                markersCluster = null;
+            }
+            if (sitesLayer) {
+                sitesLayer.clearLayers();
+                sitesLayer = null;
+            }
+        };
+        window.addEventListener('beforeunload', eventListeners.beforeunload);
+    }
+
+    function cleanupEventListeners() {
+        // Remove all event listeners to prevent memory leaks
+        if (eventListeners.languageChanged) {
+            document.removeEventListener('languageChanged', eventListeners.languageChanged);
+            eventListeners.languageChanged = null;
+        }
+        if (eventListeners.keydown) {
+            document.removeEventListener('keydown', eventListeners.keydown);
+            eventListeners.keydown = null;
+        }
+        if (eventListeners.beforeunload) {
+            window.removeEventListener('beforeunload', eventListeners.beforeunload);
+            eventListeners.beforeunload = null;
+        }
     }
 
     // ===========================================================================
@@ -2040,16 +2099,40 @@
     };
 
     // Auto-initialize if map container exists
+    let initHandler = null;
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function() {
+        initHandler = function() {
             if (document.getElementById('map')) {
                 initMap();
             }
-        });
+            // Remove listener after initialization to prevent memory leak
+            document.removeEventListener('DOMContentLoaded', initHandler);
+        };
+        document.addEventListener('DOMContentLoaded', initHandler);
     } else {
+        // DOM already loaded
         if (document.getElementById('map')) {
             initMap();
         }
+    }
+
+    // Export cleanup function for external use if needed
+    if (typeof window !== 'undefined') {
+        window.cleanupMapMemory = function() {
+            cleanupEventListeners();
+            if (map) {
+                map.remove();
+                map = null;
+            }
+            if (markersCluster) {
+                markersCluster.clearLayers();
+                markersCluster = null;
+            }
+            if (sitesLayer) {
+                sitesLayer.clearLayers();
+                sitesLayer = null;
+            }
+        };
     }
 
 })();

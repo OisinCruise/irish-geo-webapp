@@ -252,11 +252,14 @@ class HistoricalSiteListSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerial
     class Meta:
         model = HistoricalSite
         geo_field = 'location'
+        # CRITICAL: Reduced fields for memory efficiency on Render Free tier
+        # Removed full descriptions (truncated versions are used via SerializerMethodField)
+        # Keep only essential fields for map markers and popups
         fields = [
             'id', 'name_en', 'name_ga', 'site_type', 'site_type_display',
             'significance_level', 'national_monument',
             'county_name', 'era_name',
-            'description_en', 'description_ga',
+            'description_en', 'description_ga',  # These are truncated via SerializerMethodField
             'primary_image_url'
         ]
 

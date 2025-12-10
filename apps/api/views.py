@@ -61,9 +61,11 @@ class StandardResultsPagination(PageNumberPagination):
 
 class MapResultsPagination(PageNumberPagination):
     """Larger pagination for map data loading"""
-    page_size = 200  # Reduced from 500 for B1 Basic tier
+    # CRITICAL: Reduced for Render Free tier (512MB RAM)
+    # Loading too many sites causes OOM errors
+    page_size = 100  # Reduced from 200 for Render Free tier
     page_size_query_param = 'page_size'
-    max_page_size = 500  # Reduced from 2000 to prevent OOM
+    max_page_size = 200  # Reduced from 500 to prevent OOM on 512MB limit
 
 
 # ==============================================================================
@@ -114,8 +116,9 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
                     to_attr='ordered_images'
                 )
             )
-            # Use only() to limit fields fetched - significantly reduces data transfer from Neon
-            # This is critical for performance with 100+ sites
+            # CRITICAL: Use only() to limit fields fetched - reduces memory usage
+            # This is essential for Render Free tier (512MB RAM) with 100+ sites
+            # Only fetch fields needed for map markers (serializer will handle truncation)
             queryset = queryset.only(
                 'id', 'name_en', 'name_ga', 'site_type', 'significance_level',
                 'national_monument', 'description_en', 'description_ga', 'location',

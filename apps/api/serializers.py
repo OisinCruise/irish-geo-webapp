@@ -1,8 +1,10 @@
 """
-GeoJSON Serializers for Irish Historical Sites GIS API
-=======================================================
-Production-ready serializers with full GeoJSON support for Leaflet.js frontend.
-Supports bilingual content (English/Irish) and comprehensive spatial data.
+Serializers for the API - converts database models to JSON for the frontend
+
+These serializers take Django model objects and turn them into JSON that the
+frontend can use. They also handle GeoJSON format which is what Leaflet.js
+expects for map data. I have different serializers for different use cases -
+lightweight ones for lists, full ones for detail pages, etc.
 """
 from rest_framework import serializers
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
@@ -11,34 +13,44 @@ from apps.sites.models import HistoricalSite, SiteImage, SiteSource, BucketListI
 from apps.geography.models import Province, County, HistoricalEra
 
 
-# ==============================================================================
-# SERIALIZER MIXINS (DRY - Don't Repeat Yourself)
-# ==============================================================================
+# Mixin for common site serializer methods
+# I put this in a mixin so I don't have to repeat the same code in every serializer
 
 class SiteRelatedFieldsMixin:
-    """Mixin providing common related field methods for site serializers"""
+    """
+    Mixin with methods that multiple site serializers need
+    
+    Things like getting county name, era name, and primary image URL are used
+    in multiple serializers, so I put them here to avoid code duplication.
+    """
     
     def get_county_name(self, obj):
+        """Gets the county name - returns None if site has no county"""
         return obj.county.name_en if obj.county else None
     
     def get_era_name(self, obj):
+        """Gets the era name - returns None if site has no era"""
         return obj.era.name_en if obj.era else None
     
     def get_era_color(self, obj):
+        """Gets the era color for map markers"""
         return obj.era.color_hex if obj.era else None
     
     def get_primary_image_url(self, obj):
         """
-        Optimized to use prefetched ordered images (primary first)
-        Avoids N+1 queries by using prefetched data
+        Gets the primary image URL for a site
+        
+        The viewset prefetches images in a specific order (primary first) and
+        stores them in ordered_images. If that exists, I use the first one.
+        Otherwise I fall back to querying the images relation, but that should
+        be rare since we prefetch in get_queryset.
         """
-        # Check if we have the optimized prefetch (from list view)
+        # Check if we have the prefetched images from the viewset
         if hasattr(obj, 'ordered_images') and obj.ordered_images:
-            # First image in ordered_images is primary (or first non-deleted)
+            # First one is the primary (or first non-deleted)
             return obj.ordered_images[0].image_url
         
-        # Fallback: use regular images relation (for detail views or compatibility)
-        # This should be rare since we prefetch in get_queryset
+        # Fallback if prefetch didn't happen (shouldn't normally happen)
         if hasattr(obj, 'images') and obj.images.exists():
             primary = obj.images.filter(is_primary=True, is_deleted=False).first()
             if primary:
@@ -49,14 +61,15 @@ class SiteRelatedFieldsMixin:
         return None
 
 
-# ==============================================================================
-# HISTORICAL ERA SERIALIZERS
-# ==============================================================================
+# Historical Era serializers
+# Used by the timeline filter on the frontend
 
 class HistoricalEraSerializer(serializers.ModelSerializer):
     """
-    Serializer for Historical Eras
-    Used for timeline filtering and era-based map layers
+    Full era serializer with all fields
+    
+    Used when the frontend needs full era details. The duration_years is a
+    computed property from the model that calculates how long the era lasted.
     """
     duration_years = serializers.ReadOnlyField()
 
@@ -70,20 +83,26 @@ class HistoricalEraSerializer(serializers.ModelSerializer):
 
 
 class HistoricalEraMinimalSerializer(serializers.ModelSerializer):
-    """Lightweight era serializer for nested use"""
+    """
+    Lightweight era serializer - just the basics
+    
+    Used when eras are nested inside other serializers and we don't need
+    all the details, just name and color for display.
+    """
     class Meta:
         model = HistoricalEra
         fields = ['id', 'name_en', 'name_ga', 'color_hex']
 
 
-# ==============================================================================
-# SITE IMAGE SERIALIZERS
-# ==============================================================================
+# Site Image serializers
+# Handles image data with captions in both languages
 
 class SiteImageSerializer(serializers.ModelSerializer):
     """
-    Serializer for Site Images
-    Includes bilingual captions and metadata
+    Full image serializer with all metadata
+    
+    Includes captions in English and Irish, photographer info, dates, etc.
+    Used when showing image galleries or detail views.
     """
     class Meta:
         model = SiteImage
@@ -95,20 +114,25 @@ class SiteImageSerializer(serializers.ModelSerializer):
 
 
 class SiteImageMinimalSerializer(serializers.ModelSerializer):
-    """Lightweight image serializer for list views"""
+    """
+    Lightweight image serializer - just URLs and primary flag
+    
+    Used in list views where we just need the image URL, not all the metadata.
+    """
     class Meta:
         model = SiteImage
         fields = ['id', 'image_url', 'thumbnail_url', 'is_primary']
 
 
-# ==============================================================================
-# SITE SOURCE SERIALIZERS
-# ==============================================================================
+# Site Source serializers
+# Handles academic references and citations
 
 class SiteSourceSerializer(serializers.ModelSerializer):
     """
-    Serializer for Historical Sources
-    Academic references and documentation for sites
+    Serializer for sources/citations
+    
+    These are academic references, books, papers, etc. that document the sites.
+    The citation field is a computed property that formats the source properly.
     """
     citation = serializers.ReadOnlyField()
     source_type_display = serializers.CharField(
@@ -124,15 +148,17 @@ class SiteSourceSerializer(serializers.ModelSerializer):
         ]
 
 
-# ==============================================================================
-# PROVINCE SERIALIZERS (GeoJSON)
-# ==============================================================================
+# Province serializers
+# These return GeoJSON for drawing province boundaries on the map
 
 class ProvinceBoundarySerializer(GeoFeatureModelSerializer):
     """
-    GeoJSON serializer for Province boundaries
-    Returns simplified MultiPolygon geometry for map overlay.
-    Counts are pre-annotated in the queryset to avoid N+1 queries.
+    GeoJSON serializer for province boundaries
+    
+    Returns the province shapes as GeoJSON so Leaflet can draw them. The viewset
+    uses raw SQL to generate this, but this serializer is used for detail views.
+    The county_count and site_count methods try to use annotated values from the
+    queryset if available, otherwise they query the database.
     """
     county_count = serializers.SerializerMethodField()
     site_count = serializers.SerializerMethodField()
@@ -147,20 +173,22 @@ class ProvinceBoundarySerializer(GeoFeatureModelSerializer):
         ]
 
     def get_county_count(self, obj):
-        # Use annotated count if available (from optimized queryset), else fallback
+        """
+        Gets the number of counties in this province
+        
+        If the queryset annotated this value, use that (faster). Otherwise
+        count them manually.
+        """
         if hasattr(obj, 'annotated_county_count'):
             return obj.annotated_county_count
         return obj.counties.filter(is_deleted=False).count()
 
     def get_site_count(self, obj):
-        # Site count is more expensive - calculate via counties if annotated
-        if hasattr(obj, 'annotated_county_count'):
-            # Efficient: sum site counts from counties
-            return HistoricalSite.objects.filter(
-                county__province=obj,
-                is_deleted=False,
-                approval_status='approved'
-            ).count()
+        """
+        Gets the total number of sites in this province
+        
+        Counts all approved sites in all counties within the province.
+        """
         return HistoricalSite.objects.filter(
             county__province=obj,
             is_deleted=False,
@@ -169,21 +197,27 @@ class ProvinceBoundarySerializer(GeoFeatureModelSerializer):
 
 
 class ProvinceMinimalSerializer(serializers.ModelSerializer):
-    """Lightweight province serializer for dropdowns"""
+    """
+    Lightweight province serializer - just names and code
+    
+    Used for dropdowns and filters where we don't need the geometry or
+    other details, just the name to display.
+    """
     class Meta:
         model = Province
         fields = ['id', 'name_en', 'name_ga', 'code']
 
 
-# ==============================================================================
-# COUNTY SERIALIZERS (GeoJSON)
-# ==============================================================================
+# County serializers
+# Same idea as provinces but for counties
 
 class CountyBoundarySerializer(GeoFeatureModelSerializer):
     """
-    GeoJSON serializer for County boundaries
-    Returns simplified MultiPolygon geometry for map overlay with province info.
-    Site count is pre-annotated in the queryset to avoid N+1 queries.
+    GeoJSON serializer for county boundaries
+    
+    Returns county shapes as GeoJSON. Includes province info since counties
+    belong to provinces. The site_count method uses annotated values if available
+    to avoid extra queries.
     """
     province_name = serializers.CharField(source='province.name_en', read_only=True)
     province_code = serializers.CharField(source='province.code', read_only=True)
@@ -199,7 +233,12 @@ class CountyBoundarySerializer(GeoFeatureModelSerializer):
         ]
 
     def get_site_count(self, obj):
-        # Use annotated count if available (from optimized queryset), else fallback to query
+        """
+        Gets the number of sites in this county
+        
+        Uses annotated count if the queryset provided it, otherwise queries
+        the database to count approved sites.
+        """
         if hasattr(obj, 'annotated_site_count'):
             return obj.annotated_site_count
         return obj.historical_sites.filter(
@@ -209,7 +248,12 @@ class CountyBoundarySerializer(GeoFeatureModelSerializer):
 
 
 class CountyMinimalSerializer(serializers.ModelSerializer):
-    """Lightweight county serializer for dropdowns and filters"""
+    """
+    Lightweight county serializer - just names and province info
+    
+    Used for dropdowns and filters. Includes province name so the frontend
+    can show "County, Province" format.
+    """
     province_name = serializers.CharField(source='province.name_en', read_only=True)
 
     class Meta:
@@ -217,15 +261,16 @@ class CountyMinimalSerializer(serializers.ModelSerializer):
         fields = ['id', 'name_en', 'name_ga', 'code', 'province', 'province_name']
 
 
-# ==============================================================================
-# HISTORICAL SITE SERIALIZERS (GeoJSON)
-# ==============================================================================
+# Historical Site serializers
+# These are the main ones - different weights for different use cases
 
 class HistoricalSiteListSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerializer):
     """
-    Lightweight GeoJSON serializer for map markers
-    Optimized for loading many points on the map
-    Includes essential fields for popup display
+    Lightweight serializer for the map list view
+    
+    This is used when loading sites for the map. I truncate descriptions to
+    200 chars to keep the response size down. Only includes fields needed for
+    markers and popups - the detail view has everything else.
     """
     county_name = serializers.SerializerMethodField()
     era_name = serializers.SerializerMethodField()
@@ -238,13 +283,19 @@ class HistoricalSiteListSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerial
     description_ga = serializers.SerializerMethodField()
     
     def get_description_en(self, obj):
-        """Return truncated description for list view (200 chars max)"""
+        """
+        Truncates description to 200 chars for list view
+        
+        Full descriptions can be really long, so I cut them off at 200 chars
+        and add "..." to save bandwidth. The popup can load the full description
+        if the user wants it.
+        """
         if obj.description_en:
             return obj.description_en[:200] + '...' if len(obj.description_en) > 200 else obj.description_en
         return None
     
     def get_description_ga(self, obj):
-        """Return truncated description for list view (200 chars max)"""
+        """Same as English but for Irish description"""
         if obj.description_ga:
             return obj.description_ga[:200] + '...' if len(obj.description_ga) > 200 else obj.description_ga
         return None
@@ -252,9 +303,8 @@ class HistoricalSiteListSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerial
     class Meta:
         model = HistoricalSite
         geo_field = 'location'
-        # CRITICAL: Reduced fields for memory efficiency on Render Free tier
-        # Removed full descriptions (truncated versions are used via SerializerMethodField)
-        # Keep only essential fields for map markers and popups
+        # Only include essential fields to keep response size small
+        # Descriptions are truncated via the SerializerMethodField above
         fields = [
             'id', 'name_en', 'name_ga', 'site_type', 'site_type_display',
             'significance_level', 'national_monument',
@@ -266,10 +316,14 @@ class HistoricalSiteListSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerial
 
 class HistoricalSiteDetailSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerializer):
     """
-    Full GeoJSON serializer for site detail view
-    Includes all related data, images, and sources
+    Full serializer for site detail pages
+    
+    Includes everything - all fields, nested images, sources, etc. This is
+    used when the user clicks through to a site's detail page. Much bigger
+    than the list serializer but has all the information.
     """
-    # Related object names (use SerializerMethodField to handle null references)
+    # Related object names - use SerializerMethodField to handle cases where
+    # county or era might be null
     county_name = serializers.SerializerMethodField()
     county_name_ga = serializers.SerializerMethodField()
     province_name = serializers.SerializerMethodField()
@@ -329,15 +383,26 @@ class HistoricalSiteDetailSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSeri
         ]
 
     def get_province_name(self, obj):
+        """
+        Gets province name through the county relationship
+        
+        Sites don't have a direct province field, they go through county.
+        """
         if obj.county and obj.county.province:
             return obj.county.province.name_en
         return None
 
     def get_primary_image(self, obj):
+        """
+        Gets the primary image, or first image if no primary is set
+        
+        Returns it as a minimal serializer since we don't need all the metadata
+        in the detail view - just the URL.
+        """
         primary = obj.images.filter(is_primary=True, is_deleted=False).first()
         if primary:
             return SiteImageMinimalSerializer(primary).data
-        # Fall back to first image
+        # Fall back to first image if no primary
         first = obj.images.filter(is_deleted=False).first()
         if first:
             return SiteImageMinimalSerializer(first).data
@@ -346,8 +411,11 @@ class HistoricalSiteDetailSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSeri
 
 class HistoricalSitePopupSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSerializer):
     """
-    Medium-weight serializer for map popup display
-    Includes essential info without full nested objects
+    Medium-weight serializer for map popups
+    
+    When user clicks a marker, this is what gets loaded. Has more info than
+    the list view (full descriptions) but less than the detail view (no nested
+    images/sources). Just enough for a nice popup.
     """
     county_name = serializers.SerializerMethodField()
     era_name = serializers.SerializerMethodField()
@@ -371,12 +439,16 @@ class HistoricalSitePopupSerializer(SiteRelatedFieldsMixin, GeoFeatureModelSeria
         ]
 
 
-# ==============================================================================
-# SPATIAL QUERY SERIALIZERS
-# ==============================================================================
+# Query parameter serializers
+# These validate the parameters for spatial searches
 
 class NearbySearchSerializer(serializers.Serializer):
-    """Serializer for validating nearby search parameters"""
+    """
+    Validates parameters for the nearby search endpoint
+    
+    Makes sure lat/lon are within Ireland's bounds and distance/limit
+    are reasonable values. The viewset uses this to validate query params.
+    """
     lat = serializers.FloatField(
         min_value=51.0, max_value=56.0,
         help_text="Latitude (Ireland bounds: 51-56)"
@@ -396,13 +468,19 @@ class NearbySearchSerializer(serializers.Serializer):
 
 
 class BboxSearchSerializer(serializers.Serializer):
-    """Serializer for validating bounding box search parameters"""
+    """
+    Validates bounding box parameters for viewport queries
+    
+    Makes sure the bounding box is valid (min < max for both x and y).
+    The frontend sends the map's viewport bounds when panning/zooming.
+    """
     minx = serializers.FloatField(help_text="Minimum longitude (west)")
     miny = serializers.FloatField(help_text="Minimum latitude (south)")
     maxx = serializers.FloatField(help_text="Maximum longitude (east)")
     maxy = serializers.FloatField(help_text="Maximum latitude (north)")
 
     def validate(self, data):
+        """Makes sure the bounding box is valid"""
         if data['minx'] >= data['maxx']:
             raise serializers.ValidationError("minx must be less than maxx")
         if data['miny'] >= data['maxy']:
@@ -410,12 +488,17 @@ class BboxSearchSerializer(serializers.Serializer):
         return data
 
 
-# ==============================================================================
-# STATISTICS SERIALIZERS
-# ==============================================================================
+# Statistics serializers
+# These define the structure of statistics responses
 
 class SiteStatisticsSerializer(serializers.Serializer):
-    """Serializer for site statistics endpoint"""
+    """
+    Defines the structure for the statistics endpoint
+    
+    The viewset calculates all these values and this serializer just defines
+    what fields should be in the response. It's a Serializer (not ModelSerializer)
+    because the data comes from aggregations, not a single model.
+    """
     total_sites = serializers.IntegerField()
     national_monuments = serializers.IntegerField()
     unesco_sites = serializers.IntegerField()
@@ -425,12 +508,17 @@ class SiteStatisticsSerializer(serializers.Serializer):
     by_significance = serializers.DictField()
 
 
-# ==============================================================================
-# BUCKET LIST SERIALIZERS
-# ==============================================================================
+# Bucket list serializers
+# These handle the "My Journey" feature data
 
 class HistoricalSiteMinimalSerializer(SiteRelatedFieldsMixin, serializers.ModelSerializer):
-    """Minimal site serializer for nested use in bucket list"""
+    """
+    Minimal site serializer for bucket list items
+    
+    When a site is nested inside a bucket list item, we don't need all the
+    site details - just enough to display it in the list. This keeps the
+    response size reasonable.
+    """
     county_name = serializers.SerializerMethodField()
     era_name = serializers.SerializerMethodField()
     site_type_display = serializers.CharField(
@@ -449,8 +537,11 @@ class HistoricalSiteMinimalSerializer(SiteRelatedFieldsMixin, serializers.ModelS
 
 class BucketListItemSerializer(serializers.ModelSerializer):
     """
-    Full serializer for bucket list items with nested site information
-    Used for list and retrieve operations
+    Full serializer for bucket list items
+    
+    Includes the nested site data and handles photo URLs. The photo_url field
+    builds absolute URLs so the frontend can display uploaded photos correctly
+    in production.
     """
     site = HistoricalSiteMinimalSerializer(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
@@ -466,14 +557,17 @@ class BucketListItemSerializer(serializers.ModelSerializer):
 
     def get_photo_url(self, obj):
         """
-        Return absolute URL for photo if it exists.
-        This ensures the frontend can access the image even in production.
+        Builds an absolute URL for the uploaded photo
+        
+        In production, relative URLs don't work well, so I build the full URL
+        using the request object. If that's not available, falls back to
+        constructing it from settings.
         """
         if obj.photo and hasattr(obj.photo, 'url'):
             request = self.context.get('request')
             if request:
                 return request.build_absolute_uri(obj.photo.url)
-            # Fallback: construct URL from settings
+            # Fallback if request context isn't available
             from django.conf import settings
             return f"{settings.MEDIA_URL}{obj.photo.name}" if obj.photo.name else None
         return None
@@ -481,14 +575,18 @@ class BucketListItemSerializer(serializers.ModelSerializer):
 
 class BucketListCreateSerializer(serializers.Serializer):
     """
-    Serializer for creating new bucket list items
-    Only requires site_id and optional status
+    Serializer for creating bucket list items
+    
+    Just needs site_id and optionally a status. Validates that the site
+    exists and is approved before allowing creation.
     """
     site_id = serializers.IntegerField(required=True)
     status = serializers.CharField(max_length=20, default='wishlist')
 
     def validate_site_id(self, value):
-        """Validate that the site exists and is approved"""
+        """
+        Makes sure the site exists and is approved before adding to bucket list
+        """
         try:
             site = HistoricalSite.objects.get(
                 id=value,
@@ -502,7 +600,7 @@ class BucketListCreateSerializer(serializers.Serializer):
         return value
 
     def validate_status(self, value):
-        """Validate status is one of the allowed values"""
+        """Makes sure status is either 'wishlist' or 'visited'"""
         allowed_statuses = ['wishlist', 'visited']
         if value not in allowed_statuses:
             raise serializers.ValidationError(
@@ -514,7 +612,9 @@ class BucketListCreateSerializer(serializers.Serializer):
 class BucketListUpdateSerializer(serializers.Serializer):
     """
     Serializer for updating bucket list items
-    Allows updating status, photo, and caption
+    
+    Lets users update status, upload photos, and add captions. If they change
+    status to 'visited', automatically sets the visited_at timestamp.
     """
     status = serializers.CharField(max_length=20, required=False)
     photo = serializers.ImageField(required=False, allow_null=True)
@@ -522,7 +622,7 @@ class BucketListUpdateSerializer(serializers.Serializer):
     visited_at = serializers.DateTimeField(allow_null=True, required=False)
 
     def validate_status(self, value):
-        """Validate status is one of the allowed values"""
+        """Makes sure status is valid"""
         allowed_statuses = ['wishlist', 'visited']
         if value not in allowed_statuses:
             raise serializers.ValidationError(
@@ -531,14 +631,24 @@ class BucketListUpdateSerializer(serializers.Serializer):
         return value
 
     def validate(self, data):
-        """Set visited_at when status is changed to visited"""
+        """
+        Auto-sets visited_at timestamp when status changes to 'visited'
+        
+        If they mark it as visited and didn't provide a timestamp, I set it
+        to now automatically.
+        """
         if data.get('status') == 'visited' and not data.get('visited_at'):
             data['visited_at'] = timezone.now()
         return data
 
 
 class BucketListStatisticsSerializer(serializers.Serializer):
-    """Serializer for bucket list statistics"""
+    """
+    Defines the structure for bucket list statistics
+    
+    The viewset calculates these values and this just defines what fields
+    should be in the response.
+    """
     total = serializers.IntegerField()
     wishlist = serializers.IntegerField()
     visited = serializers.IntegerField()

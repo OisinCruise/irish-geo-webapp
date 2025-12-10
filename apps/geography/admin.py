@@ -1,11 +1,21 @@
-"""Django admin configuration for Geography models"""
+"""
+Django admin configuration for geography models
+
+Sets up admin interfaces for provinces, counties, and eras. Uses GISModelAdmin
+for provinces and counties so I can edit the boundaries on a map.
+"""
 from django.contrib.gis import admin
 from .models import Province, County, HistoricalEra
 
 
 @admin.register(Province)
 class ProvinceAdmin(admin.GISModelAdmin):
-    """Admin interface for Province model"""
+    """
+    Admin interface for provinces
+    
+    Uses GISModelAdmin so I can edit the province boundary on a map widget.
+    The gis_widget_kwargs centers the map on Ireland by default.
+    """
     list_display = ['name_en', 'name_ga', 'code', 'area_km2', 'population', 'county_count']
     search_fields = ['name_en', 'name_ga', 'code']
     list_filter = ['is_deleted']
@@ -31,6 +41,7 @@ class ProvinceAdmin(admin.GISModelAdmin):
         }),
     )
     
+    # Map widget settings - centers on Ireland when editing boundaries
     gis_widget_kwargs = {
         'attrs': {
             'default_zoom': 6,
@@ -42,7 +53,12 @@ class ProvinceAdmin(admin.GISModelAdmin):
 
 @admin.register(County)
 class CountyAdmin(admin.GISModelAdmin):
-    """Admin interface for County model"""
+    """
+    Admin interface for counties
+    
+    Same as provinces - can edit boundaries on a map. Shows which province
+    each county belongs to in the list view.
+    """
     list_display = ['name_en', 'name_ga', 'code', 'province', 'area_km2', 'population', 'site_count']
     search_fields = ['name_en', 'name_ga', 'code']
     list_filter = ['province', 'is_deleted']
@@ -71,7 +87,12 @@ class CountyAdmin(admin.GISModelAdmin):
 
 @admin.register(HistoricalEra)
 class HistoricalEraAdmin(admin.ModelAdmin):
-    """Admin interface for HistoricalEra model"""
+    """
+    Admin interface for historical eras
+    
+    No map widget needed here since eras don't have geometry. The duration_years
+    is read-only since it's calculated from start_year and end_year.
+    """
     list_display = ['name_en', 'name_ga', 'start_year', 'end_year', 'duration_years', 'color_hex', 'display_order']
     search_fields = ['name_en', 'name_ga']
     list_filter = ['is_deleted']

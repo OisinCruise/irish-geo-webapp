@@ -1,6 +1,9 @@
 """
-Geography Models - Irish Administrative Boundaries
-Province, County, and Historical Era models for Irish Historical Sites GIS
+Geography models - provinces, counties, and historical eras
+
+These models store the geographic boundaries and time periods. Provinces and
+counties have MultiPolygon geometries for drawing boundaries on the map.
+Historical eras are used for filtering sites by time period.
 """
 from django.contrib.gis.db import models
 from django.contrib.gis.geos import Point
@@ -8,40 +11,67 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
 
 
-# ==============================================================================
-# CUSTOM MANAGERS WITH SPATIAL QUERY METHODS
-# ==============================================================================
+# Custom managers for geography models
+# These add helper methods for spatial queries and filtering
 
 class ProvinceManager(models.Manager):
-    """Custom manager for Province with spatial queries"""
+    """
+    Manager with methods for querying provinces
+    
+    Can find provinces by location, add site counts, etc.
+    """
     
     def with_site_counts(self):
-        """Annotate provinces with historical site counts"""
+        """
+        Adds site count to each province
+        
+        Counts sites through the county relationship. Useful for showing
+        how many sites are in each province.
+        """
         return self.annotate(
             site_count=models.Count('county__historical_sites')
         )
     
     def containing_point(self, longitude, latitude):
-        """Find province containing a specific point"""
+        """
+        Finds which province contains a point
+        
+        Uses PostGIS contains to check if a point is inside the province
+        boundary. Returns the first match (should only be one).
+        """
         point = Point(longitude, latitude, srid=4326)
         return self.filter(geometry__contains=point).first()
 
 
 class CountyManager(models.Manager):
-    """Custom manager for County with spatial and filtering queries"""
+    """
+    Manager with methods for querying counties
+    
+    Can filter by province, find counties near points, add site counts.
+    """
     
     def in_province(self, province_name):
-        """Get all counties in a province"""
+        """Gets all counties in a specific province"""
         return self.filter(province__name_en__iexact=province_name)
     
     def with_site_counts(self):
-        """Annotate counties with site counts"""
+        """
+        Adds site count to each county, sorted by count
+        
+        Useful for showing which counties have the most sites.
+        """
         return self.annotate(
             site_count=models.Count('historical_sites')
         ).order_by('-site_count')
     
     def near_point(self, longitude, latitude, distance_km=50):
-        """Find counties within distance of a point"""
+        """
+        Finds counties near a point
+        
+        Uses distance calculation to find counties within a radius.
+        Default is 50km which is pretty big, but useful for finding
+        nearby counties.
+        """
         from django.contrib.gis.measure import D
         point = Point(longitude, latitude, srid=4326)
         return self.filter(
@@ -50,28 +80,38 @@ class CountyManager(models.Manager):
 
 
 class HistoricalEraManager(models.Manager):
-    """Custom manager for Historical Eras"""
+    """
+    Manager for historical eras
+    
+    Can find eras active in a specific year, get them in chronological order.
+    """
     
     def active_in_year(self, year):
-        """Get eras active in a specific year"""
+        """
+        Gets eras that were active in a specific year
+        
+        Checks if the year falls between start_year and end_year.
+        """
         return self.filter(
             start_year__lte=year,
             end_year__gte=year
         )
     
     def by_chronology(self):
-        """Return eras in chronological order"""
+        """Gets eras sorted by start year - earliest first"""
         return self.order_by('start_year')
 
 
-# ==============================================================================
-# PROVINCE MODEL
-# ==============================================================================
+# Province model
+# Ireland has 4 provinces - these are the top-level administrative divisions
 
 class Province(models.Model):
     """
-    Irish Province (Cúige) - Top-level administrative division
-    Ireland has 4 provinces: Connacht, Leinster, Munster, Ulster (ROI portion)
+    Model for Irish provinces
+    
+    Each province has a MultiPolygon geometry for its boundary, which gets
+    drawn on the map. Provinces contain counties, and counties contain sites.
+    I'm using managed=False because the table already exists in the database.
     """
     
     # Primary fields
@@ -95,7 +135,8 @@ class Province(models.Model):
         help_text=_("Two-letter province code (C, L, M, U)")
     )
     
-    # Spatial field - MultiPolygon for complex boundaries
+    # Province boundary - MultiPolygon because some provinces have multiple
+    # separate areas (like islands)
     geometry = models.MultiPolygonField(
         srid=4326,
         geography=False,
@@ -103,7 +144,7 @@ class Province(models.Model):
         help_text=_("Province boundary geometry (WGS84)")
     )
     
-    # Statistical fields
+    # Area and population stats
     area_km2 = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -121,7 +162,7 @@ class Province(models.Model):
         help_text=_("Province population")
     )
     
-    # Descriptive fields (bilingual)
+    # Descriptions in both languages
     description_en = models.TextField(
         blank=True,
         verbose_name=_("Description (English)"),
@@ -133,7 +174,7 @@ class Province(models.Model):
         help_text=_("Province description in Irish")
     )
     
-    # Audit fields
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -164,26 +205,32 @@ class Province(models.Model):
     
     @property
     def county_count(self):
-        """Number of counties in this province"""
+        """Counts how many counties are in this province"""
         return self.counties.filter(is_deleted=False).count()
     
     @property
     def centroid(self):
-        """Geographic center of province"""
+        """
+        Gets the geographic center point of the province
+        
+        Useful for centering the map on a province or calculating distances.
+        """
         return self.geometry.centroid if self.geometry else None
 
 
-# ==============================================================================
-# COUNTY MODEL
-# ==============================================================================
+# County model
+# There are 26 counties in Ireland - these are the second-level divisions
 
 class County(models.Model):
     """
-    Irish County (Contae) - Second-level administrative division
-    26 counties in Republic of Ireland
+    Model for Irish counties
+    
+    Counties belong to provinces and contain historical sites. Each county
+    has a MultiPolygon boundary that can be drawn on the map. Same as
+    provinces, using managed=False because the table exists already.
     """
     
-    # Primary fields
+    # Basic info - name in both languages and a 3-letter code
     id = models.BigAutoField(primary_key=True)
     name_en = models.CharField(
         max_length=100,
@@ -204,7 +251,7 @@ class County(models.Model):
         help_text=_("Three-letter county code")
     )
     
-    # Foreign key to Province
+    # Which province this county belongs to
     province = models.ForeignKey(
         Province,
         on_delete=models.PROTECT,
@@ -213,7 +260,7 @@ class County(models.Model):
         help_text=_("Province this county belongs to")
     )
     
-    # Spatial field
+    # County boundary - also MultiPolygon for the same reason as provinces
     geometry = models.MultiPolygonField(
         srid=4326,
         geography=False,
@@ -221,7 +268,7 @@ class County(models.Model):
         help_text=_("County boundary geometry (WGS84)")
     )
     
-    # Statistical fields
+    # Area and population stats
     area_km2 = models.DecimalField(
         max_digits=10,
         decimal_places=2,
@@ -237,7 +284,7 @@ class County(models.Model):
         verbose_name=_("Population")
     )
     
-    # Descriptive fields (bilingual)
+    # Descriptions in both languages
     description_en = models.TextField(
         blank=True,
         verbose_name=_("Description (English)")
@@ -247,7 +294,7 @@ class County(models.Model):
         verbose_name=_("Description (Irish)")
     )
     
-    # Audit fields
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -279,21 +326,23 @@ class County(models.Model):
     
     @property
     def site_count(self):
-        """Number of historical sites in this county"""
+        """Counts how many approved sites are in this county"""
         return self.historical_sites.filter(is_deleted=False).count()
 
 
-# ==============================================================================
-# HISTORICAL ERA MODEL
-# ==============================================================================
+# Historical Era model
+# These define time periods for categorizing sites
 
 class HistoricalEra(models.Model):
     """
-    Historical Time Period (Tréimhse Staire)
-    Defines major eras in Irish history for site categorization
+    Model for historical time periods
+    
+    Each era has a start and end year, a color for map visualization, and
+    descriptions. Sites are linked to eras so users can filter by time period.
+    The color_hex field is used to color-code sites on the map by era.
     """
     
-    # Primary fields
+    # Name in both languages
     id = models.BigAutoField(primary_key=True)
     name_en = models.CharField(
         max_length=100,
@@ -308,7 +357,7 @@ class HistoricalEra(models.Model):
         help_text=_("Historical era name in Irish")
     )
     
-    # Time range
+    # When this era started and ended
     start_year = models.IntegerField(
         verbose_name=_("Start Year"),
         help_text=_("Era start year (negative for BCE)")
@@ -318,7 +367,7 @@ class HistoricalEra(models.Model):
         help_text=_("Era end year")
     )
     
-    # Display fields
+    # How to display it - order in timeline and color for map
     display_order = models.IntegerField(
         default=0,
         verbose_name=_("Display Order"),
@@ -331,7 +380,7 @@ class HistoricalEra(models.Model):
         help_text=_("Hex color for map visualization (#RRGGBB)")
     )
     
-    # Descriptive fields (bilingual)
+    # Descriptions in both languages
     description_en = models.TextField(
         verbose_name=_("Description (English)"),
         help_text=_("Era description in English")
@@ -341,7 +390,7 @@ class HistoricalEra(models.Model):
         help_text=_("Era description in Irish")
     )
     
-    # Audit fields
+    # Timestamps
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -368,14 +417,19 @@ class HistoricalEra(models.Model):
     
     @property
     def duration_years(self):
-        """Calculate era duration in years"""
+        """Calculates how many years the era lasted"""
         return self.end_year - self.start_year
     
     @property
     def is_ancient(self):
-        """Check if era is before Common Era"""
+        """Checks if the era is BCE (before year 0)"""
         return self.start_year < 0
     
     def contains_year(self, year):
-        """Check if a year falls within this era"""
+        """
+        Checks if a specific year falls within this era
+        
+        Useful for filtering sites by year - if a site was established in
+        a certain year, you can check which era it belongs to.
+        """
         return self.start_year <= year <= self.end_year

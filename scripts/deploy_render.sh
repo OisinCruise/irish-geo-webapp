@@ -4,12 +4,11 @@
 # ==============================================================================
 #
 # This script helps prepare and verify your deployment to Render.com
-# with Neon.tech PostgreSQL + PostGIS
+# with Render PostgreSQL + PostGIS
 #
 # Prerequisites:
 #   1. GitHub repository connected to Render
-#   2. Neon.tech database created with PostGIS enabled
-#   3. render.yaml blueprint file in repository root
+#   2. render.yaml blueprint file in repository root (creates database automatically)
 #
 # Usage:
 #   chmod +x scripts/deploy_render.sh
@@ -28,7 +27,7 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║     Irish Historical Sites GIS - Render Deployment           ║${NC}"
-echo -e "${BLUE}║     (Using Neon.tech for PostgreSQL + PostGIS)              ║${NC}"
+echo -e "${BLUE}║     (Using Render PostgreSQL + PostGIS)                      ║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════╝${NC}"
 
 # ==============================================================================
@@ -103,17 +102,13 @@ echo "1. Push your code to GitHub"
 echo "2. Go to https://dashboard.render.com/"
 echo "3. Click 'New' > 'Blueprint'"
 echo "4. Connect your GitHub repository"
-echo "5. Render will auto-detect render.yaml and configure the service"
-echo "6. Add your Neon database credentials as environment variables:"
+echo "5. Render will auto-detect render.yaml and configure both database and web service"
+echo "6. DATABASE_URL is automatically provided when database is linked"
 echo ""
-echo -e "${YELLOW}   Required Environment Variables:${NC}"
-echo "   - DB_NAME=neondb"
-echo "   - DB_USER=neondb_owner"
-echo "   - DB_PASSWORD=<your-neon-password>"
-echo "   - DB_HOST=ep-silent-breeze-a8a70nhq-pooler.eastus2.azure.neon.tech"
-echo ""
-echo "   Or use DATABASE_URL format:"
-echo "   - DATABASE_URL=postgresql://neondb_owner:<password>@<host>/neondb?sslmode=require"
+echo -e "${YELLOW}   Note:${NC}"
+echo "   - The render.yaml blueprint creates the PostgreSQL database automatically"
+echo "   - DATABASE_URL is automatically provided by Render"
+echo "   - No manual database configuration needed"
 echo ""
 
 echo -e "${BLUE}Option 2: Manual Web Service${NC}"

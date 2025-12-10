@@ -1,6 +1,9 @@
 """
-Historical Sites Models - Main Content Models
-HistoricalSite, SiteImage, and SiteSource models
+Models for historical sites - the main data models
+
+These are the core models that store all the site information. HistoricalSite
+is the main one, and SiteImage and SiteSource are related models. I'm using
+GeoDjango models because sites have location data that needs spatial queries.
 """
 from django.contrib.gis.db import models as gis_models
 from django.db import models
@@ -12,36 +15,41 @@ from django.db.models import Q, Count, Avg
 import os
 
 
-# ==============================================================================
-# CUSTOM MANAGERS WITH SPATIAL QUERIES
-# ==============================================================================
+# Custom manager for sites
+# I added these methods to make it easier to query sites in different ways
+# Instead of writing the same filters over and over, I can just call site_manager.near_point()
 
 class HistoricalSiteManager(gis_models.Manager):
-    """Custom manager for HistoricalSite with spatial and filtering queries"""
+    """
+    Custom manager with helper methods for querying sites
+    
+    These methods make it easier to find sites by location, type, era, etc.
+    The spatial queries use PostGIS functions to find sites near points or
+    in bounding boxes.
+    """
     
     def active(self):
-        """Return only non-deleted, approved sites"""
+        """Gets only approved sites that aren't deleted"""
         return self.filter(is_deleted=False, approval_status='approved')
     
     def by_county(self, county_name):
-        """Filter sites by county name"""
+        """Finds sites in a specific county"""
         return self.filter(county__name_en__iexact=county_name, is_deleted=False)
     
     def by_era(self, era_name):
-        """Filter sites by historical era"""
+        """Finds sites from a specific historical era"""
         return self.filter(era__name_en__iexact=era_name, is_deleted=False)
     
     def by_type(self, site_type):
-        """Filter sites by type"""
+        """Finds sites of a specific type (castle, monastery, etc.)"""
         return self.filter(site_type=site_type, is_deleted=False)
     
     def near_point(self, longitude, latitude, distance_km=10):
         """
-        Find sites within distance of a point
-        Args:
-            longitude: Longitude in WGS84
-            latitude: Latitude in WGS84
-            distance_km: Search radius in kilometers
+        Finds sites near a point - used for location-based search
+        
+        Uses PostGIS distance calculations to find all sites within a certain
+        radius. Returns them sorted by distance so closest ones come first.
         """
         from django.contrib.gis.db.models.functions import Distance
         point = Point(longitude, latitude, srid=4326)
@@ -52,42 +60,49 @@ class HistoricalSiteManager(gis_models.Manager):
     
     def in_bounding_box(self, min_lon, min_lat, max_lon, max_lat):
         """
-        Find sites within a bounding box
-        Args:
-            min_lon, min_lat: Southwest corner
-            max_lon, max_lat: Northeast corner
+        Finds sites within a bounding box - used when the map viewport changes
+        
+        Takes the corners of a rectangle and finds all sites inside it. This
+        is what gets called when the user pans or zooms the map.
         """
         from django.contrib.gis.geos import Polygon
         bbox = Polygon.from_bbox((min_lon, min_lat, max_lon, max_lat))
         return self.filter(location__within=bbox, is_deleted=False)
     
     def with_high_significance(self):
-        """Return sites with significance level 4 or 5"""
+        """Gets only the most important sites (significance 4 or 5)"""
         return self.filter(significance_level__gte=4, is_deleted=False)
     
     def national_monuments(self):
-        """Return only national monuments"""
+        """Gets only sites that are designated national monuments"""
         return self.filter(national_monument=True, is_deleted=False)
     
     def with_ratings(self):
-        """Annotate sites with average rating"""
+        """
+        Adds rating info to sites - not really used yet but might be useful later
+        
+        Annotates each site with average rating and count of ratings.
+        """
         return self.annotate(
             avg_rating=Avg('ratings__rating'),
             rating_count=Count('ratings')
         )
 
 
-# ==============================================================================
-# HISTORICAL SITE MODEL (Main Model)
-# ==============================================================================
+# Historical Site model - this is the main one
+# Stores all the information about each historical site
 
 class HistoricalSite(gis_models.Model):
     """
-    Historical Site (Suíomh Stairiúil) - Main model for archaeological sites
-    Represents castles, monasteries, battlefields, and other historical locations
+    Main model for historical sites
+    
+    This stores everything about a site - name, location, description, type,
+    significance level, etc. The location field is a PointZ (3D point) so
+    it includes elevation. I'm using managed=False because the table already
+    exists in the database and I don't want Django to try to create it.
     """
     
-    # Site Type Choices
+    # Site type options - these are the categories sites can be
     SITE_TYPE_CHOICES = [
         ('castle', _('Castle')),
         ('monastery', _('Monastery/Abbey')),
@@ -104,14 +119,14 @@ class HistoricalSite(gis_models.Model):
         ('other', _('Other')),
     ]
     
-    # Approval Status Choices
+    # Approval workflow - sites need to be approved before showing on the map
     APPROVAL_STATUS_CHOICES = [
         ('pending', _('Pending Review')),
         ('approved', _('Approved')),
         ('rejected', _('Rejected')),
     ]
     
-    # Preservation Status Choices
+    # How well preserved the site is
     PRESERVATION_STATUS_CHOICES = [
         ('excellent', _('Excellent')),
         ('good', _('Good')),
@@ -136,7 +151,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Historical site name in Irish (Gaeilge)")
     )
     
-    # Descriptive fields (bilingual)
+    # Descriptions in both languages
     description_en = models.TextField(
         verbose_name=_("Description (English)"),
         help_text=_("Detailed description in English")
@@ -147,16 +162,17 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Detailed description in Irish")
     )
     
-    # Spatial field - 3D Point location (PointZ)
+    # Location - PointZ means it has X, Y, and Z (elevation)
+    # The database already has this as 3D, so I need to match it
     location = gis_models.PointField(
         srid=4326,
-        dim=3,  # Your database uses PointZ (3D coordinates)
+        dim=3,  # 3D coordinates (longitude, latitude, elevation)
         geography=False,
         verbose_name=_("Location"),
         help_text=_("Site coordinates (WGS84) with elevation")
     )
     
-    # Physical attributes
+    # Elevation - can also get this from the Z coordinate in location
     elevation_meters = models.DecimalField(
         max_digits=8,
         decimal_places=2,
@@ -167,7 +183,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Elevation above sea level in meters")
     )
     
-    # Foreign Keys
+    # Relationships - site belongs to a county and an era
     county = models.ForeignKey(
         'geography.County',
         on_delete=models.SET_NULL,
@@ -190,7 +206,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Primary historical era")
     )
     
-    # Site categorization
+    # What kind of site it is
     site_type = models.CharField(
         max_length=50,
         choices=SITE_TYPE_CHOICES,
@@ -206,7 +222,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("1=Local, 2=Regional, 3=National, 4=International")
     )
     
-    # Temporal data (as DATE fields - matching database)
+    # When the site was built/used
     date_established = models.DateField(
         null=True,
         blank=True,
@@ -227,7 +243,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Historical period description (e.g., 'Early Medieval')")
     )
     
-    # Preservation and status
+    # How well preserved it is and special designations
     preservation_status = models.CharField(
         max_length=50,
         choices=PRESERVATION_STATUS_CHOICES,
@@ -249,7 +265,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Designated as National Monument")
     )
     
-    # Visitor access information
+    # Info for visitors - can they access it, is there a visitor center, etc.
     is_public_access = models.BooleanField(
         default=True,
         verbose_name=_("Public Access"),
@@ -268,7 +284,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Admission fee required")
     )
     
-    # Contact and location details
+    # Contact info and address
     address = models.TextField(
         blank=True,
         verbose_name=_("Address"),
@@ -296,7 +312,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Contact phone number")
     )
     
-    # Audit fields (matching database exactly)
+    # Tracking who created/modified records
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -316,7 +332,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Username who last modified this record")
     )
     
-    # Approval workflow
+    # Approval system - sites need to be approved before going live
     approval_status = models.CharField(
         max_length=20,
         choices=APPROVAL_STATUS_CHOICES,
@@ -340,11 +356,11 @@ class HistoricalSite(gis_models.Model):
         verbose_name=_("Approval Date")
     )
     
-    # Soft delete
+    # Soft delete - don't actually delete, just mark as deleted
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     
-    # Data quality
+    # Where the data came from and how good it is
     data_source = models.CharField(
         max_length=255,
         blank=True,
@@ -359,7 +375,7 @@ class HistoricalSite(gis_models.Model):
         help_text=_("Quality rating: 1=Poor, 5=Excellent")
     )
     
-    # Analytics
+    # Track how many times the site has been viewed
     view_count = models.IntegerField(
         default=0,
         verbose_name=_("View Count"),
@@ -385,52 +401,69 @@ class HistoricalSite(gis_models.Model):
     
     @property
     def coordinates(self):
-        """Return (longitude, latitude) tuple"""
+        """Gets lat/lon as a tuple - useful for the frontend"""
         if self.location:
             return (self.location.x, self.location.y)
         return None
     
     @property
     def latitude(self):
-        """Return latitude"""
+        """Gets just the latitude"""
         return self.location.y if self.location else None
     
     @property
     def longitude(self):
-        """Return longitude"""
+        """Gets just the longitude"""
         return self.location.x if self.location else None
     
     @property
     def elevation_from_geometry(self):
-        """Return elevation from Z coordinate if available"""
+        """
+        Gets elevation from the Z coordinate in the location field
+        
+        The location is a PointZ, so it has elevation built in. This checks
+        if that's available, otherwise falls back to the elevation_meters field.
+        """
         if self.location and self.location.z:
             return self.location.z
         return self.elevation_meters
     
     def distance_from(self, longitude, latitude):
         """
-        Calculate distance from a point in kilometers
+        Calculates distance to a point in kilometers
+        
+        Uses a rough conversion (1 degree ≈ 111 km) since we're dealing with
+        lat/lon coordinates. For more accuracy, you'd use proper geodesic
+        calculations, but this is good enough for most purposes.
         """
         from django.contrib.gis.geos import Point
         point = Point(longitude, latitude, srid=4326)
-        # Convert degrees to approximate km (rough conversion)
+        # Rough conversion - 1 degree ≈ 111 km
         return self.location.distance(point) * 111
     
     def nearby_sites(self, radius_km=10, limit=10):
-        """Find nearby historical sites"""
+        """
+        Finds other sites near this one
+        
+        Uses the manager's near_point method to find sites within a radius.
+        Excludes itself from the results.
+        """
         return HistoricalSite.objects.near_point(
             self.longitude,
             self.latitude,
             distance_km=radius_km
         ).exclude(pk=self.pk)[:limit]
 
-# ==============================================================================
-# SITE IMAGE MODEL
-# ==============================================================================
+# Site Image model
+# Stores images that belong to sites
 
 class SiteImage(models.Model):
     """
-    Site Image (Íomhá Suímh) - Images associated with historical sites
+    Model for images associated with sites
+    
+    Sites can have multiple images. Each image has captions in both languages,
+    metadata about the photographer, and display settings like whether it's
+    the primary image or what order to show it in.
     """
     
     # Primary fields
@@ -445,14 +478,14 @@ class SiteImage(models.Model):
         help_text=_("Site this image belongs to")
     )
     
-    # Image file
+    # Image URL - images are stored externally, not in the database
     image_url = models.URLField(
         max_length=500,
         verbose_name=_("Image URL"),
         help_text=_("URL to image file")
     )
     
-    # Captions (bilingual)
+    # Titles and captions in both languages
     title_en = models.CharField(
         max_length=255,
         blank=True,
@@ -473,7 +506,7 @@ class SiteImage(models.Model):
         verbose_name=_("Caption (Irish)")
     )
     
-    # Metadata
+    # Who took the photo and when
     photographer = models.CharField(
         max_length=255,
         blank=True,
@@ -536,7 +569,7 @@ class SiteImage(models.Model):
         help_text=_("Image is public")
     )
     
-    # Technical fields
+    # Image dimensions and file size
     width_px = models.IntegerField(
         null=True,
         blank=True,
@@ -556,7 +589,7 @@ class SiteImage(models.Model):
         verbose_name=_("File Size (KB)")
     )
     
-    # Display fields
+    # Display settings - which image shows first, what order they're in
     is_primary = models.BooleanField(
         default=False,
         verbose_name=_("Primary Image"),
@@ -567,7 +600,7 @@ class SiteImage(models.Model):
         verbose_name=_("Display Order")
     )
     
-    # Rights and permissions
+    # Copyright/license info
     license_type = models.CharField(
         db_column='license_type',  # Add db_column for consistency
         max_length=50,  # Match database: max_length=50
@@ -577,7 +610,7 @@ class SiteImage(models.Model):
         help_text=_("Copyright/license information")
     )
     
-    # User contribution
+    # Who uploaded this image
     uploaded_by = models.CharField(
         max_length=100,
         blank=True,
@@ -586,7 +619,7 @@ class SiteImage(models.Model):
         help_text=_("Username who uploaded this image")
     )
     
-    # Audit fields
+    # When it was added
     created_at = models.DateTimeField(auto_now_add=True)
     
     # Soft delete
@@ -609,13 +642,16 @@ class SiteImage(models.Model):
         return f"Image for {self.site.name_en}"
 
 
-# ==============================================================================
-# SITE SOURCE MODEL
-# ==============================================================================
+# Site Source model
+# Stores academic references and citations for sites
 
 class SiteSource(models.Model):
     """
-    Historical Source (Foinse Stairiúil) - Academic/historical references for sites
+    Model for sources/citations
+    
+    These are academic references, books, papers, websites, etc. that document
+    information about the site. Each source has a reliability score to indicate
+    how trustworthy it is.
     """
     
     SOURCE_TYPE_CHOICES = [
@@ -638,7 +674,7 @@ class SiteSource(models.Model):
         verbose_name=_("Historical Site")
     )
     
-    # Source details
+    # What kind of source it is and all the details
     source_type = models.CharField(
         max_length=50,
         choices=SOURCE_TYPE_CHOICES,
@@ -698,7 +734,7 @@ class SiteSource(models.Model):
         help_text=_("Additional notes about source")
     )
     
-    # Quality rating
+    # How reliable/trustworthy this source is
     reliability_score = models.IntegerField(
         default=3,
         validators=[MinValueValidator(1), MaxValueValidator(5)],
@@ -706,7 +742,7 @@ class SiteSource(models.Model):
         help_text=_("1=Questionable, 5=Highly reliable")
     )
     
-    # Audit fields
+    # When it was added and by whom
     created_at = models.DateTimeField(auto_now_add=True)
     added_by = models.CharField(
         max_length=100,
@@ -738,7 +774,12 @@ class SiteSource(models.Model):
     
     @property
     def citation(self):
-        """Generate a basic citation string"""
+        """
+        Generates a formatted citation string
+        
+        Combines author, year, title, and publisher into a basic citation
+        format. Used when displaying sources on the site detail page.
+        """
         parts = []
         if self.author:
             parts.append(self.author)
@@ -750,15 +791,17 @@ class SiteSource(models.Model):
         return ". ".join(parts)
 
 
-# ==============================================================================
-# BUCKET LIST MODEL
-# ==============================================================================
+# Bucket List model
+# This is for the "My Journey" feature where users can save sites
 
 class BucketListItem(models.Model):
     """
-    Bucket List Item (Mír Liosta Buicéid) - User's wishlist and visited sites
-    Tracks sites users want to visit or have visited without requiring authentication
-    Uses session-based tracking for anonymous users
+    Model for bucket list items - user's saved sites
+    
+    Users can add sites to their bucket list and mark them as visited. I'm
+    using session keys instead of requiring login, so people can use it
+    without creating an account. Each item can have a photo and caption
+    that the user uploads when they visit.
     """
 
     STATUS_CHOICES = [
@@ -766,10 +809,9 @@ class BucketListItem(models.Model):
         ('visited', _('Visited - Completed')),
     ]
 
-    # Primary fields
+    # Which site this bucket list item is for
     id = models.AutoField(primary_key=True)
 
-    # Foreign Key to Site
     site = models.ForeignKey(
         HistoricalSite,
         on_delete=models.CASCADE,
@@ -779,7 +821,8 @@ class BucketListItem(models.Model):
         help_text=_("Site on bucket list")
     )
 
-    # Session-based user tracking (no authentication required)
+    # Session key identifies which user this belongs to
+    # No login required - just uses Django sessions
     session_key = models.CharField(
         max_length=40,
         db_index=True,
@@ -787,7 +830,7 @@ class BucketListItem(models.Model):
         help_text=_("Django session key for anonymous user tracking")
     )
 
-    # Status tracking
+    # Whether it's on their wishlist or they've visited it
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
@@ -797,7 +840,7 @@ class BucketListItem(models.Model):
         help_text=_("Current status of bucket list item")
     )
 
-    # Timestamps
+    # When they added it and when they visited
     added_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name=_("Added At"),
@@ -811,7 +854,7 @@ class BucketListItem(models.Model):
         help_text=_("When user marked site as visited")
     )
 
-    # User content - photo and caption
+    # User can upload a photo and add a caption when they visit
     photo = models.ImageField(
         upload_to='bucket_photos/',
         null=True,
@@ -845,7 +888,7 @@ class BucketListItem(models.Model):
             models.Index(fields=['site', 'session_key']),
             models.Index(fields=['status']),
         ]
-        # Ensure one user can't add same site twice to their bucket list
+        # Prevent duplicate entries - one user can't add the same site twice
         constraints = [
             models.UniqueConstraint(
                 fields=['site', 'session_key'],
@@ -858,14 +901,22 @@ class BucketListItem(models.Model):
         return f"{self.session_key[:8]}... - {self.site.name_en} ({self.status})"
 
     def mark_as_visited(self):
-        """Mark item as visited with current timestamp"""
+        """
+        Marks the item as visited and sets the timestamp
+        
+        Helper method to update status and timestamp in one go.
+        """
         from django.utils import timezone
         self.status = 'visited'
         self.visited_at = timezone.now()
         self.save()
 
     def mark_as_wishlist(self):
-        """Mark item as wishlist (undo visited status)"""
+        """
+        Changes it back to wishlist status
+        
+        If they marked it visited by mistake, they can change it back.
+        """
         self.status = 'wishlist'
         self.visited_at = None
         self.save()

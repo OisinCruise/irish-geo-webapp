@@ -539,26 +539,26 @@ All spatial endpoints return **GeoJSON** (RFC 7946) format:
 irish-geo-webapp/
 ├── apps/
 │   ├── api/              # Django REST Framework API
-│   │   ├── views.py      # ViewSets and API endpoints (739 lines)
-│   │   ├── serializers.py # GeoJSON serializers (515 lines)
+│   │   ├── views.py      # ViewSets and API endpoints (1,027 lines)
+│   │   ├── serializers.py # GeoJSON serializers (657 lines)
 │   │   └── urls.py       # API routing
 │   ├── geography/        # Province, County, Era models
-│   │   └── models.py     # Geographic models (384 lines)
+│   │   └── models.py     # Geographic models (435 lines)
 │   └── sites/            # Historical sites and journey tracking
-│       └── models.py     # Site, Image, BucketList models (872 lines)
+│       └── models.py     # Site, Image, BucketList models (922 lines)
 ├── config/
 │   ├── settings/         # Django settings
 │   │   ├── base.py       # Base configuration
 │   │   ├── development.py
-│   │   └── production.py # Render/Neon deployment config
+│   │   └── production.py # Render PostgreSQL deployment config
 │   └── urls.py           # Main URL routing
 ├── static/
 │   ├── css/
 │   │   ├── theme.css     # Theme variables (407 lines)
-│   │   └── components.css # UI components (1,752 lines)
+│   │   └── components.css # UI components (1,742 lines)
 │   ├── js/
-│   │   ├── map.js        # Leaflet map logic (2,063 lines)
-│   │   ├── sw.js         # Service worker (421 lines)
+│   │   ├── map.js        # Leaflet map logic (2,164 lines)
+│   │   ├── sw.js         # Service worker (420 lines)
 │   │   ├── theme.js      # Theme toggle
 │   │   └── i18n.js       # Internationalization
 │   └── images/           # PWA icons, screenshots
@@ -607,7 +607,6 @@ DJANGO_ALLOWED_HOSTS=.onrender.com
 - `render.yaml` - Infrastructure as Code blueprint (includes database service)
 - `Dockerfile` - Multi-stage production build
 - `build.sh` - Build script (alternative deployment)
-- `scripts/migrate_neon_to_render.py` - Database migration script
 
 ### Database Hosting
 
@@ -617,25 +616,6 @@ DJANGO_ALLOWED_HOSTS=.onrender.com
 - SSL required
 - Connection pooling via `CONN_MAX_AGE`
 - `DATABASE_URL` automatically provided when database is linked to web service
-
-### Migrating from Neon to Render PostgreSQL
-
-If you're migrating from Neon, use the migration script:
-
-```bash
-# Set your connection strings
-export NEON_DATABASE_URL='postgresql://neondb_owner:password@ep-gentle-cake-a8ekv7j8-pooler.eastus2.azure.neon.tech/neondb?sslmode=require'
-export RENDER_DATABASE_URL='postgresql://user:password@dpg-xxxxx-a.oregon-postgres.render.com/irish_geo_db?sslmode=require'
-
-# Run migration
-python scripts/migrate_neon_to_render.py
-```
-
-The script will:
-1. Enable PostGIS extension on Render PostgreSQL
-2. Export all data from Neon
-3. Import data to Render PostgreSQL
-4. Verify the migration
 
 ---
 

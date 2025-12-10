@@ -336,7 +336,9 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
     - `GET /api/v1/provinces/list/` - Simple list (no geometry)
     """
     serializer_class = ProvinceBoundarySerializer
-    pagination_class = None  # Return all provinces at once
+    # Explicitly disable pagination - provinces are small enough to return all at once
+    # But queryset must be ordered to avoid warnings if pagination is somehow applied
+    pagination_class = None
     filter_backends = [filters.SearchFilter]
     search_fields = ['name_en', 'name_ga']
 
@@ -355,6 +357,7 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
         # This reduces 13MB of province geometries to ~1-2MB
         # Also annotate county_count and site_count to avoid N+1 queries
         # Table name qualified to avoid ambiguous column reference when joins are present
+        # CRITICAL: Add order_by to prevent UnorderedObjectListWarning when pagination is applied
         return Province.objects.filter(is_deleted=False).extra(
             select={'geometry': 'ST_SimplifyPreserveTopology(province.geometry, 0.005)'}
         ).annotate(
@@ -363,7 +366,7 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
                 filter=Q(counties__is_deleted=False),
                 distinct=True
             )
-        )
+        ).order_by('name_en')  # Order by name to ensure consistent pagination
 
     @extend_schema(
         responses={200: ProvinceMinimalSerializer(many=True)},
@@ -395,7 +398,9 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
     - `GET /api/v1/counties/by_province/{province_id}/` - Counties in province
     """
     serializer_class = CountyBoundarySerializer
-    pagination_class = None  # Return all counties at once
+    # Explicitly disable pagination - counties are small enough to return all at once
+    # But queryset must be ordered to avoid warnings if pagination is somehow applied
+    pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['province']
     search_fields = ['name_en', 'name_ga', 'code']
@@ -410,6 +415,7 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         # Use raw SQL annotation for geometry simplification (PostGIS)
         # This reduces 28MB of county geometries to ~2-3MB
         # Table name qualified to avoid ambiguous column reference when province is joined via select_related
+        # CRITICAL: Add order_by to prevent UnorderedObjectListWarning when pagination is applied
         return County.objects.filter(is_deleted=False).select_related('province').extra(
             select={'geometry': 'ST_SimplifyPreserveTopology(county.geometry, 0.003)'}
         ).annotate(
@@ -420,7 +426,7 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
                     historical_sites__approval_status='approved'
                 )
             )
-        )
+        ).order_by('name_en')  # Order by name to ensure consistent pagination
 
     @extend_schema(
         responses={200: CountyMinimalSerializer(many=True)},

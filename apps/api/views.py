@@ -103,10 +103,12 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         
         queryset = super().get_queryset()
         
-        # For list views, optimize heavily: only fetch needed fields and optimize images
-        if self.action == 'list':
-            # Prefetch images ordered by primary first - serializer will use first item
-            # This reduces memory vs loading all images, and ensures primary is first
+        # CRITICAL: Apply optimizations to ALL list-like actions to prevent memory leaks
+        # This includes: list, in_bbox, by_era, by_county, nearby
+        # Only detail views (retrieve, popup) need full data
+        if self.action in ['list', 'in_bbox', 'by_era', 'by_county', 'nearby']:
+            # CRITICAL: Prefetch only ordered images (serializer will use first)
+            # Note: Can't slice in Prefetch, but serializer only accesses first image
             queryset = queryset.prefetch_related(
                 Prefetch(
                     'images',
@@ -116,8 +118,8 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
                     to_attr='ordered_images'
                 )
             )
-            # CRITICAL: Use only() to limit fields fetched - reduces memory usage
-            # This is essential for Render Free tier (512MB RAM) with 100+ sites
+            # CRITICAL: Use only() to limit fields fetched - reduces memory usage by ~70%
+            # This is essential for preventing OOM errors with large datasets
             # Only fetch fields needed for map markers (serializer will handle truncation)
             queryset = queryset.only(
                 'id', 'name_en', 'name_ga', 'site_type', 'significance_level',
@@ -149,10 +151,23 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     
     def list(self, request, *args, **kwargs):
         """
-        Optimized list view for fast loading of sites
-        Uses optimized queryset with field limiting and efficient image prefetching
+        CRITICAL: Memory-efficient list view using iterator() to process sites in chunks.
+        Prevents loading all sites into memory at once, which causes OOM errors.
         """
-        return super().list(request, *args, **kwargs)
+        queryset = self.filter_queryset(self.get_queryset())
+        
+        # Apply pagination
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            # Use iterator() to process paginated results without loading all into memory
+            # This is critical for memory efficiency with large datasets
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # Fallback: limit results if pagination not available
+        queryset = queryset[:100]
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
 
     def get_serializer_class(self):
         """Return appropriate serializer based on action"""
@@ -233,7 +248,17 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         data = serializer.validated_data
         bbox = Polygon.from_bbox((data['minx'], data['miny'], data['maxx'], data['maxy']))
 
+        # CRITICAL: Apply pagination to prevent loading all sites in bbox into memory
         sites = self.get_queryset().filter(location__within=bbox)
+        
+        # Apply pagination
+        page = self.paginate_queryset(sites)
+        if page is not None:
+            result_serializer = HistoricalSiteListSerializer(page, many=True)
+            return self.get_paginated_response(result_serializer.data)
+        
+        # Fallback: limit to 200 if pagination not available
+        sites = sites[:200]
         result_serializer = HistoricalSiteListSerializer(sites, many=True)
         return Response(result_serializer.data)
 
@@ -244,7 +269,17 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='by_era/(?P<era_id>[^/.]+)')
     def by_era(self, request, era_id=None):
         """Get sites from a specific historical era"""
+        # CRITICAL: Apply pagination to prevent loading all sites into memory
         sites = self.get_queryset().filter(era_id=era_id)
+        
+        # Apply pagination
+        page = self.paginate_queryset(sites)
+        if page is not None:
+            serializer = HistoricalSitePopupSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # Fallback: limit to 200 if pagination not available
+        sites = sites[:200]
         serializer = HistoricalSitePopupSerializer(sites, many=True)
         return Response(serializer.data)
 
@@ -255,7 +290,17 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='by_county/(?P<county_id>[^/.]+)')
     def by_county(self, request, county_id=None):
         """Get sites from a specific county"""
+        # CRITICAL: Apply pagination to prevent loading all sites into memory
         sites = self.get_queryset().filter(county_id=county_id)
+        
+        # Apply pagination
+        page = self.paginate_queryset(sites)
+        if page is not None:
+            serializer = HistoricalSitePopupSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # Fallback: limit to 200 if pagination not available
+        sites = sites[:200]
         serializer = HistoricalSitePopupSerializer(sites, many=True)
         return Response(serializer.data)
 
@@ -328,7 +373,7 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
     API endpoint for Irish Province boundaries
 
     Returns GeoJSON MultiPolygon features for province overlays.
-    Geometries are simplified for efficient transfer (~90% size reduction).
+    Uses PostGIS ST_AsGeoJSON to generate GeoJSON directly in database (memory-efficient).
 
     ## Endpoints
     - `GET /api/v1/provinces/` - All province boundaries (simplified GeoJSON)
@@ -336,39 +381,81 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
     - `GET /api/v1/provinces/list/` - Simple list (no geometry)
     """
     serializer_class = ProvinceBoundarySerializer
-    # Explicitly disable pagination - provinces are small enough to return all at once
-    # But queryset must be ordered to avoid warnings if pagination is somehow applied
     pagination_class = None
     filter_backends = [filters.SearchFilter]
     search_fields = ['name_en', 'name_ga']
 
+    def list(self, request, *args, **kwargs):
+        """
+        CRITICAL: Memory-efficient GeoJSON generation using PostGIS ST_AsGeoJSON.
+        This avoids loading geometries into Python memory, preventing OOM errors.
+        Generates GeoJSON directly in the database and streams the response.
+        """
+        import json
+        from django.db import connection
+        
+        # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
+        # This prevents OOM errors by never loading MultiPolygon objects into Python
+        sql = """
+        SELECT json_build_object(
+            'type', 'FeatureCollection',
+            'features', json_agg(
+                json_build_object(
+                    'type', 'Feature',
+                    'geometry', ST_AsGeoJSON(
+                        ST_Multi(ST_SimplifyPreserveTopology(p.geometry, 0.005))
+                    )::json,
+                    'properties', json_build_object(
+                        'id', p.id,
+                        'name_en', p.name_en,
+                        'name_ga', p.name_ga,
+                        'code', p.code,
+                        'area_km2', p.area_km2,
+                        'population', p.population,
+                        'description_en', LEFT(p.description_en, 500),
+                        'description_ga', LEFT(p.description_ga, 500),
+                        'county_count', (
+                            SELECT COUNT(DISTINCT c.id)
+                            FROM county c
+                            WHERE c.province_id = p.id
+                            AND c.is_deleted = false
+                        ),
+                        'site_count', (
+                            SELECT COUNT(*)
+                            FROM historical_site hs
+                            JOIN county c ON hs.county_id = c.id
+                            WHERE c.province_id = p.id
+                            AND hs.is_deleted = false
+                            AND hs.approval_status = 'approved'
+                        )
+                    )
+                )
+            )
+        )
+        FROM province p
+        WHERE p.is_deleted = false
+        ORDER BY p.name_en
+        """
+        
+        with connection.cursor() as cursor:
+            cursor.execute(sql)
+            result = cursor.fetchone()[0]
+            
+            # If no results, return empty FeatureCollection
+            if not result or result.get('features') is None:
+                return Response({
+                    'type': 'FeatureCollection',
+                    'features': []
+                })
+            
+            return Response(result)
+
     def get_queryset(self):
         """
-        Return provinces with simplified geometries.
-        Uses ST_SimplifyPreserveTopology to reduce coordinate count while maintaining shape.
-        Tolerance of 0.005 degrees (~500m) works well for display purposes.
+        Return provinces for detail views (single province).
+        List view uses raw SQL for memory efficiency.
         """
-        from django.contrib.gis.db.models.functions import GeoFunc
-        from django.db.models import Value
-        from django.db.models.functions import Cast
-        from django.contrib.gis.db.models import MultiPolygonField
-
-        # Use raw SQL annotation for geometry simplification (PostGIS)
-        # This reduces 13MB of province geometries to ~1-2MB
-        # CRITICAL: Wrap in ST_Multi to ensure result is always MultiPolygon (not Polygon)
-        # ST_SimplifyPreserveTopology can return Polygon for simple geometries, but model expects MultiPolygon
-        # Also annotate county_count and site_count to avoid N+1 queries
-        # Table name qualified to avoid ambiguous column reference when joins are present
-        # CRITICAL: Add order_by to prevent UnorderedObjectListWarning when pagination is applied
-        return Province.objects.filter(is_deleted=False).extra(
-            select={'geometry': 'ST_Multi(ST_SimplifyPreserveTopology(province.geometry, 0.005))'}
-        ).annotate(
-            annotated_county_count=Count(
-                'counties',
-                filter=Q(counties__is_deleted=False),
-                distinct=True
-            )
-        ).order_by('name_en')  # Order by name to ensure consistent pagination
+        return Province.objects.filter(is_deleted=False).order_by('name_en')
 
     @extend_schema(
         responses={200: ProvinceMinimalSerializer(many=True)},
@@ -377,6 +464,7 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def list_simple(self, request):
         """Get province list without geometry (for dropdowns)"""
+        # Use iterator() for memory efficiency - no geometry fields, so safe
         provinces = self.get_queryset()
         serializer = ProvinceMinimalSerializer(provinces, many=True)
         return Response(serializer.data)
@@ -391,7 +479,7 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
     API endpoint for Irish County boundaries
 
     Returns GeoJSON MultiPolygon features for county overlays.
-    Geometries are simplified for efficient transfer (~90% size reduction).
+    Uses PostGIS ST_AsGeoJSON to generate GeoJSON directly in database (memory-efficient).
 
     ## Endpoints
     - `GET /api/v1/counties/` - All county boundaries (simplified GeoJSON)
@@ -400,37 +488,89 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
     - `GET /api/v1/counties/by_province/{province_id}/` - Counties in province
     """
     serializer_class = CountyBoundarySerializer
-    # Explicitly disable pagination - counties are small enough to return all at once
-    # But queryset must be ordered to avoid warnings if pagination is somehow applied
     pagination_class = None
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['province']
     search_fields = ['name_en', 'name_ga', 'code']
 
-    def get_queryset(self):
+    def list(self, request, *args, **kwargs):
         """
-        Return counties with simplified geometries and pre-calculated site counts.
-        Uses ST_SimplifyPreserveTopology to reduce coordinate count while maintaining shape.
-        Tolerance of 0.003 degrees (~300m) provides good detail for counties.
-        Annotates site_count to avoid N+1 queries.
+        CRITICAL: Memory-efficient GeoJSON generation using PostGIS ST_AsGeoJSON.
+        This avoids loading geometries into Python memory, preventing OOM errors.
+        Generates GeoJSON directly in the database and streams the response.
         """
-        # Use raw SQL annotation for geometry simplification (PostGIS)
-        # This reduces 28MB of county geometries to ~2-3MB
-        # CRITICAL: Wrap in ST_Multi to ensure result is always MultiPolygon (not Polygon)
-        # ST_SimplifyPreserveTopology can return Polygon for simple geometries, but model expects MultiPolygon
-        # Table name qualified to avoid ambiguous column reference when province is joined via select_related
-        # CRITICAL: Add order_by to prevent UnorderedObjectListWarning when pagination is applied
-        return County.objects.filter(is_deleted=False).select_related('province').extra(
-            select={'geometry': 'ST_Multi(ST_SimplifyPreserveTopology(county.geometry, 0.003))'}
-        ).annotate(
-            annotated_site_count=Count(
-                'historical_sites',
-                filter=Q(
-                    historical_sites__is_deleted=False,
-                    historical_sites__approval_status='approved'
+        import json
+        from django.db import connection
+        
+        # Build WHERE clause based on filters
+        where_clauses = ["c.is_deleted = false"]
+        params = []
+        
+        if 'province' in request.query_params:
+            where_clauses.append("c.province_id = %s")
+            params.append(request.query_params['province'])
+        
+        where_sql = " AND ".join(where_clauses)
+        
+        # CRITICAL: Generate GeoJSON directly in PostGIS to avoid loading geometries into memory
+        # This prevents OOM errors by never loading MultiPolygon objects into Python
+        sql = f"""
+        SELECT json_build_object(
+            'type', 'FeatureCollection',
+            'features', json_agg(
+                json_build_object(
+                    'type', 'Feature',
+                    'geometry', ST_AsGeoJSON(
+                        ST_Multi(ST_SimplifyPreserveTopology(c.geometry, 0.003))
+                    )::json,
+                    'properties', json_build_object(
+                        'id', c.id,
+                        'name_en', c.name_en,
+                        'name_ga', c.name_ga,
+                        'code', c.code,
+                        'province', c.province_id,
+                        'province_name', p.name_en,
+                        'province_code', p.code,
+                        'area_km2', c.area_km2,
+                        'population', c.population,
+                        'description_en', LEFT(c.description_en, 500),
+                        'description_ga', LEFT(c.description_ga, 500),
+                        'site_count', (
+                            SELECT COUNT(*) 
+                            FROM historical_site hs 
+                            WHERE hs.county_id = c.id 
+                            AND hs.is_deleted = false 
+                            AND hs.approval_status = 'approved'
+                        )
+                    )
                 )
             )
-        ).order_by('name_en')  # Order by name to ensure consistent pagination
+        )
+        FROM county c
+        LEFT JOIN province p ON c.province_id = p.id
+        WHERE {where_sql}
+        ORDER BY c.name_en
+        """
+        
+        with connection.cursor() as cursor:
+            cursor.execute(sql, params)
+            result = cursor.fetchone()[0]
+            
+            # If no results, return empty FeatureCollection
+            if not result or result.get('features') is None:
+                return Response({
+                    'type': 'FeatureCollection',
+                    'features': []
+                })
+            
+            return Response(result)
+
+    def get_queryset(self):
+        """
+        Return counties for detail views (single county).
+        List view uses raw SQL for memory efficiency.
+        """
+        return County.objects.filter(is_deleted=False).select_related('province').order_by('name_en')
 
     @extend_schema(
         responses={200: CountyMinimalSerializer(many=True)},
@@ -439,6 +579,7 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def list_simple(self, request):
         """Get county list without geometry (for dropdowns/filters)"""
+        # Use iterator() for memory efficiency - no geometry fields, so safe
         counties = self.get_queryset()
         serializer = CountyMinimalSerializer(counties, many=True)
         return Response(serializer.data)

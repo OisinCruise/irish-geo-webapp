@@ -1,5 +1,5 @@
 """
-Production settings for Render deployment with Neon PostgreSQL
+Production settings for Render deployment with Render PostgreSQL
 """
 from .base import *
 import os
@@ -40,12 +40,13 @@ SECURE_HSTS_SECONDS = 31536000  # 1 year
 SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 SECURE_HSTS_PRELOAD = True
 
-# Database - Neon PostgreSQL with PostGIS
-# Supports both DATABASE_URL (Render style) and individual env vars
+# Database - Render PostgreSQL with PostGIS
+# Render automatically provides DATABASE_URL when database is linked
+# Supports both DATABASE_URL (Render style) and individual env vars for backward compatibility
 DATABASE_URL = os.environ.get('DATABASE_URL', '')
 
 if DATABASE_URL:
-    # Parse DATABASE_URL for Render-style configuration
+    # Parse DATABASE_URL for Render PostgreSQL configuration
     import urllib.parse
     url = urllib.parse.urlparse(DATABASE_URL)
     DATABASES = {
@@ -57,25 +58,23 @@ if DATABASE_URL:
             'HOST': url.hostname,
             'PORT': url.port or '5432',
             'OPTIONS': {
-                'sslmode': 'require',  # Neon requires SSL
-                'connect_timeout': '60',  # 60 second connection timeout for Neon auto-resume
+                'sslmode': 'require',  # Render PostgreSQL requires SSL
             },
-            'CONN_MAX_AGE': 600,
+            'CONN_MAX_AGE': 600,  # Connection pooling
         }
     }
 else:
-    # Fallback to individual environment variables
+    # Fallback to individual environment variables (for local development or manual setup)
     DATABASES = {
         'default': {
             'ENGINE': 'django.contrib.gis.db.backends.postgis',
-            'NAME': os.environ.get('DB_NAME', 'neondb'),
-            'USER': os.environ.get('DB_USER', 'neondb_owner'),
+            'NAME': os.environ.get('DB_NAME', 'irish_geo_db'),
+            'USER': os.environ.get('DB_USER', 'irish_geo_user'),
             'PASSWORD': os.environ.get('DB_PASSWORD', ''),
             'HOST': os.environ.get('DB_HOST', 'localhost'),
             'PORT': os.environ.get('DB_PORT', '5432'),
             'OPTIONS': {
-                'sslmode': 'require',  # Neon requires SSL
-                'connect_timeout': '60',  # 60 second connection timeout for Neon auto-resume
+                'sslmode': 'require',  # Render PostgreSQL requires SSL
             },
             'CONN_MAX_AGE': 600,
         }

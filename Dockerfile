@@ -1,6 +1,6 @@
 # Irish Historical Sites GIS - Django Application
 # Multi-stage build for smaller production image
-# Configured for Render.com deployment with Neon PostgreSQL
+# Configured for Render.com deployment with Render PostgreSQL
 
 # Stage 1: Build stage
 FROM python:3.11-slim-bookworm AS builder

@@ -84,12 +84,14 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
 #### Features & Implementation
 
 1. **Hero Section with Animated Gradient**
+   - <img width="1470" height="744" alt="image" src="https://github.com/user-attachments/assets/2187501a-6910-43db-9de1-ee6e81b7ac87" />
    - Animated gradient background using CSS keyframes
    - Floating decorative elements with rotation animations
    - Call-to-action buttons linking to map and about pages
    - **Implementation:** CSS animations with `@keyframes`, flexbox layout
 
 2. **Journey Dashboard (Fitness-Style Stats)**
+   - <img width="1470" height="831" alt="image" src="https://github.com/user-attachments/assets/babc44f6-e963-4c7e-b6a3-c6e11695a716" />
    - **Wishlist Count** - Sites added to bucket list
    - **Visited Count** - Sites marked as visited
    - **Counties Explored** - Unique counties with visited sites
@@ -102,6 +104,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Custom events for cross-page updates
 
 3. **Recent Activity Preview**
+   - <img width="1470" height="396" alt="image" src="https://github.com/user-attachments/assets/bfa68404-73b0-493f-a0da-b6fedf50efff" />
    - Grid display of 4 most recent bucket list items
    - Photo thumbnails with fallback icons
    - Status badges (Wishlist/Visited)
@@ -111,6 +114,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Image lazy loading
 
 4. **Feature Cards (Glassmorphism Design)**
+   - <img width="1470" height="832" alt="image" src="https://github.com/user-attachments/assets/388bd8a0-4d88-4cab-9f20-cdb373b50f5f" />
    - 6 feature highlights with glassmorphism effects
    - Icon-based visual hierarchy
    - Hover animations
@@ -120,6 +124,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Staggered fade-in animations
 
 5. **Quick Stats Section**
+   - <img width="1470" height="828" alt="image" src="https://github.com/user-attachments/assets/2c7bf110-2909-4254-9196-50877a2af2fa" />
    - Animated counters (26 Counties, 4 Provinces, 13+ Categories, 2 Languages)
    - Scroll-triggered animations using Intersection Observer
    - **Implementation:** 
@@ -142,6 +147,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
 #### Features & Implementation
 
 1. **Interactive Leaflet Map**
+   - <img width="1470" height="832" alt="image" src="https://github.com/user-attachments/assets/41d91930-48bf-44ec-9e33-45591e05c10f" />
    - Full-screen map with OpenStreetMap integration
    - Multiple basemap layers (Street, Satellite, Terrain)
    - Custom marker clustering for performance
@@ -151,11 +157,16 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Marker clustering with `Leaflet.markercluster`
 
 2. **Basemap Gallery**
+   - <img width="1470" height="832" alt="image" src="https://github.com/user-attachments/assets/41d91930-48bf-44ec-9e33-45591e05c10f" />
+   - <img width="1470" height="832" alt="image" src="https://github.com/user-attachments/assets/b4333a96-f7f4-466c-96f0-be14c009e8e7" />
+   - <img width="1470" height="831" alt="image" src="https://github.com/user-attachments/assets/c832e41e-52e7-4f2f-ab3c-988c12bd6785" />
    - Toggle between Street, Satellite, and Terrain views
    - Era-specific basemap filtering
    - **Implementation:** Leaflet layer control with custom tile providers
 
 3. **Boundary Visualization**
+   - <img width="1470" height="830" alt="image" src="https://github.com/user-attachments/assets/47de1f06-4dd4-4dc6-91ff-17f71fb0f1a6" />
+   - <img width="1470" height="830" alt="image" src="https://github.com/user-attachments/assets/df18677d-de7c-4b4e-a8a2-d05952e69445" />
    - **County Borders** - 26 ROI counties as GeoJSON polygons
    - **Province Borders** - 4 Irish provinces
    - Toggle on/off with styled borders
@@ -164,6 +175,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Custom styling with Leaflet path options
 
 4. **Legend Panel**
+   - <img width="170" height="260" alt="image" src="https://github.com/user-attachments/assets/2652b1e7-a26e-4f60-8e9d-56fbadd8a53d" />
    - Dynamic legend showing active map elements
    - Color-coded site types
    - National Monument indicators
@@ -173,6 +185,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - CSS transitions for smooth collapse/expand
 
 5. **Measurement Tool**
+   - <img width="1470" height="830" alt="image" src="https://github.com/user-attachments/assets/dcee5a3b-4231-4b82-a23f-87357eff68a6" />
    - Distance measurement between points
    - Click to place points, double-click to finish
    - Real-time distance display
@@ -181,6 +194,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Haversine formula for accurate distance calculation
 
 6. **Coordinate Finder**
+   - <img width="1470" height="831" alt="image" src="https://github.com/user-attachments/assets/13ee0957-5b80-45c4-aee6-b44f2caba184" />
    - Real-time coordinate display on mouse hover
    - Click to copy coordinates
    - **Implementation:** 
@@ -188,6 +202,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Coordinate formatting (decimal degrees)
 
 7. **Elevation Profile Tool**
+   - <img width="1470" height="832" alt="image" src="https://github.com/user-attachments/assets/ab96dfb1-7a82-4945-9519-69254d74935e" />
    - Click to place start point, double-click to finish
    - Elevation data from Open Elevation API
    - Visual profile graph
@@ -196,6 +211,8 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Chart.js for elevation visualization
 
 8. **Device Location**
+
+   - <img width="180" height="77" alt="image" src="https://github.com/user-attachments/assets/75912354-a8c6-4afa-ab28-779567aa5bcc" />
    - Browser geolocation API
    - Center map on user location
    - Find nearby sites
@@ -204,6 +221,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Spatial query to `/api/v1/sites/nearby/`
 
 9. **Custom Markers**
+   - <img width="1470" height="831" alt="image" src="https://github.com/user-attachments/assets/27314521-5578-4bca-9648-cea1ffca802f" />
    - Add/remove user-defined points
    - Persistent markers with localStorage
    - **Implementation:** 
@@ -211,6 +229,8 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Browser storage API
 
 10. **Site Popups**
+    - <img width="1470" height="830" alt="image" src="https://github.com/user-attachments/assets/d7045a59-ced5-4610-9023-1c7c6930110e" />
+    - <img width="1470" height="832" alt="image" src="https://github.com/user-attachments/assets/76f3569b-7f40-4a0e-9adb-8762e42bb877" />
     - Rich popups with site images, descriptions, dates
     - Bilingual content display
     - Add to wishlist/visited buttons
@@ -221,6 +241,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
       - Image lazy loading
 
 11. **Filter Sidebar**
+    - <img width="1470" height="831" alt="image" src="https://github.com/user-attachments/assets/de75e0d7-2010-4037-a248-3ffb57917b60" />
     - Filter by site type (13 categories)
     - Filter by county (26 counties)
     - Filter by historical era
@@ -231,6 +252,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
       - URL parameter persistence
 
 12. **Site Count Badge**
+    - <img width="296" height="522" alt="image" src="https://github.com/user-attachments/assets/50988398-13b6-43a4-9c92-93fae760cf38" />
     - Real-time count of visible sites
     - Updates on filter changes
     - **Implementation:** 
@@ -238,6 +260,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
       - Debounced API calls
 
 13. **Search Functionality**
+    - <img width="1470" height="830" alt="image" src="https://github.com/user-attachments/assets/e8893be5-33bb-4303-9f0e-863350d929bc" />
     - Search sites by name
     - Autocomplete suggestions
     - **Implementation:** 
@@ -261,6 +284,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
 #### Features & Implementation
 
 1. **Cork Board Design**
+   - <img width="1467" height="831" alt="image" src="https://github.com/user-attachments/assets/17334eab-abb8-46f8-bf69-ae29707e1858" />
    - Realistic cork texture background
    - Wooden frame border
    - Push pin effects on polaroid cards
@@ -270,6 +294,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Box shadows for depth
 
 2. **Polaroid-Style Cards**
+   - <img width="1470" height="830" alt="image" src="https://github.com/user-attachments/assets/dd5c26b6-bda2-41a1-8969-9ca4b7d972c4" />
    - Photo display with white borders
    - Random rotation for natural look
    - Hover effects with scale and shadow
@@ -279,6 +304,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Transition animations
 
 3. **Photo Upload System**
+   - <img width="1466" height="830" alt="image" src="https://github.com/user-attachments/assets/9141d488-4357-425a-b61d-220dafb44e8c" />
    - Upload photos for visited sites (5MB limit)
    - Optional captions
    - Image preview
@@ -289,6 +315,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Django file handling
 
 4. **Statistics Summary**
+   - <img width="1397" height="369" alt="image" src="https://github.com/user-attachments/assets/7cf5cee0-3425-478c-b801-25185eba9381" />
    - Total photos uploaded
    - Counties visited
    - Sites explored
@@ -297,6 +324,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Real-time counter updates
 
 5. **County Filtering**
+   - <img width="1397" height="369" alt="image" src="https://github.com/user-attachments/assets/79f84d46-5407-4126-a0f9-8d6d10389893" />
    - Filter polaroids by county
    - Dynamic filter button generation
    - Active state management
@@ -305,6 +333,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Dynamic DOM manipulation
 
 6. **Photo Modal**
+   - <img width="1470" height="829" alt="image" src="https://github.com/user-attachments/assets/e17c3755-3118-4fb3-94a6-ec8bf51bf905" />
    - Full-screen photo viewer
    - Site details and metadata
    - Caption display
@@ -314,6 +343,7 @@ Irish Historical Sites GIS is a location-based services (LBS) application that p
      - Keyboard navigation (ESC to close)
 
 7. **Empty State**
+   - <img width="1470" height="831" alt="image" src="https://github.com/user-attachments/assets/75879a97-ddf1-4c5a-a8de-9b7d1cc702d8" />
    - Encouraging message for new users
    - Call-to-action to explore map
    - **Implementation:** 

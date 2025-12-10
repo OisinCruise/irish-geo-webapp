@@ -103,10 +103,14 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         
         queryset = super().get_queryset()
         
-        # For list views, optimize heavily: only fetch needed fields and optimize images
-        if self.action == 'list':
+        # CRITICAL: Apply optimizations to ALL list-like actions, not just 'list'
+        # This includes: list, in_bbox, by_era, by_county, nearby
+        # Only detail views (retrieve, popup) need full data
+        if self.action in ['list', 'in_bbox', 'by_era', 'by_county', 'nearby']:
             # Prefetch images ordered by primary first - serializer will use first item
             # This reduces memory vs loading all images, and ensures primary is first
+            # Prefetch images ordered by primary first
+            # Note: We can't slice in Prefetch, but serializer only uses first image
             queryset = queryset.prefetch_related(
                 Prefetch(
                     'images',
@@ -193,11 +197,13 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         data = serializer.validated_data
         point = Point(data['lon'], data['lat'], srid=4326)
 
+        # CRITICAL: Use optimized queryset and limit results
+        # The [:data['limit']] slice is applied, but we should still use optimized queryset
         sites = self.get_queryset().filter(
             location__distance_lte=(point, D(km=data['distance']))
         ).annotate(
             distance=Distance('location', point)
-        ).order_by('distance')[:data['limit']]
+        ).order_by('distance')[:min(data['limit'], 100)]  # Cap at 100 to prevent OOM
 
         result_serializer = HistoricalSitePopupSerializer(sites, many=True)
         return Response(result_serializer.data)
@@ -233,7 +239,18 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
         data = serializer.validated_data
         bbox = Polygon.from_bbox((data['minx'], data['miny'], data['maxx'], data['maxy']))
 
+        # CRITICAL: Apply pagination to prevent loading all sites into memory
+        # Use the optimized queryset (get_queryset applies optimizations for 'in_bbox' action)
         sites = self.get_queryset().filter(location__within=bbox)
+        
+        # Apply pagination
+        page = self.paginate_queryset(sites)
+        if page is not None:
+            result_serializer = HistoricalSiteListSerializer(page, many=True)
+            return self.get_paginated_response(result_serializer.data)
+        
+        # Fallback: limit to 200 if pagination not available (shouldn't happen)
+        sites = sites[:200]
         result_serializer = HistoricalSiteListSerializer(sites, many=True)
         return Response(result_serializer.data)
 
@@ -244,7 +261,17 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='by_era/(?P<era_id>[^/.]+)')
     def by_era(self, request, era_id=None):
         """Get sites from a specific historical era"""
+        # CRITICAL: Apply pagination to prevent loading all sites into memory
         sites = self.get_queryset().filter(era_id=era_id)
+        
+        # Apply pagination
+        page = self.paginate_queryset(sites)
+        if page is not None:
+            serializer = HistoricalSitePopupSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # Fallback: limit to 200 if pagination not available
+        sites = sites[:200]
         serializer = HistoricalSitePopupSerializer(sites, many=True)
         return Response(serializer.data)
 
@@ -255,7 +282,17 @@ class HistoricalSiteViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'], url_path='by_county/(?P<county_id>[^/.]+)')
     def by_county(self, request, county_id=None):
         """Get sites from a specific county"""
+        # CRITICAL: Apply pagination to prevent loading all sites into memory
         sites = self.get_queryset().filter(county_id=county_id)
+        
+        # Apply pagination
+        page = self.paginate_queryset(sites)
+        if page is not None:
+            serializer = HistoricalSitePopupSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        # Fallback: limit to 200 if pagination not available
+        sites = sites[:200]
         serializer = HistoricalSitePopupSerializer(sites, many=True)
         return Response(serializer.data)
 
@@ -336,7 +373,9 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
     - `GET /api/v1/provinces/list/` - Simple list (no geometry)
     """
     serializer_class = ProvinceBoundarySerializer
-    pagination_class = None  # Return all provinces at once
+    # CRITICAL: Enable pagination for provinces to prevent loading all geometries at once
+    # Even with simplification, 4 provinces with MultiPolygon geometry can be large
+    pagination_class = StandardResultsPagination
     filter_backends = [filters.SearchFilter]
     search_fields = ['name_en', 'name_ga']
 
@@ -395,7 +434,9 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
     - `GET /api/v1/counties/by_province/{province_id}/` - Counties in province
     """
     serializer_class = CountyBoundarySerializer
-    pagination_class = None  # Return all counties at once
+    # CRITICAL: Enable pagination for counties to prevent loading all geometries at once
+    # Even with simplification, 26 counties with MultiPolygon geometry can be large
+    pagination_class = StandardResultsPagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['province']
     search_fields = ['name_en', 'name_ga', 'code']

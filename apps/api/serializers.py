@@ -31,20 +31,27 @@ class SiteRelatedFieldsMixin:
         """
         Optimized to use prefetched ordered images (primary first)
         Avoids N+1 queries by using prefetched data
+        CRITICAL: Only use first image to minimize memory usage
         """
         # Check if we have the optimized prefetch (from list view)
         if hasattr(obj, 'ordered_images') and obj.ordered_images:
             # First image in ordered_images is primary (or first non-deleted)
-            return obj.ordered_images[0].image_url
+            # Only access first image to avoid loading all images into memory
+            return obj.ordered_images[0].image_url if len(obj.ordered_images) > 0 else None
         
         # Fallback: use regular images relation (for detail views or compatibility)
         # This should be rare since we prefetch in get_queryset
-        if hasattr(obj, 'images') and obj.images.exists():
-            primary = obj.images.filter(is_primary=True, is_deleted=False).first()
-            if primary:
-                return primary.image_url
-            first = obj.images.filter(is_deleted=False).first()
-            return first.image_url if first else None
+        # Use only() to limit fields fetched
+        if hasattr(obj, 'images'):
+            try:
+                primary = obj.images.filter(is_primary=True, is_deleted=False).only('image_url').first()
+                if primary:
+                    return primary.image_url
+                first = obj.images.filter(is_deleted=False).only('image_url').first()
+                return first.image_url if first else None
+            except Exception:
+                # If relation is not available, return None
+                return None
         
         return None
 

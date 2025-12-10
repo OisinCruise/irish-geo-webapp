@@ -133,6 +133,35 @@
     flex-direction: column;
     gap: 10px;
     width: fit-content;
+    transition: transform 0.3s ease-in-out;
+}
+
+.toolbar-toggle {
+    position: absolute;
+    top: 75px;
+    left: 10px;
+    z-index: 1001;
+    width: 44px;
+    height: 44px;
+    background-color: var(--bg-card);
+    border: 2px solid var(--border-color);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all var(--transition-fast);
+}
+
+.toolbar-toggle:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--color-primary);
+}
+
+.toolbar-toggle:active {
+    transform: scale(0.95);
 }
 
 /* Ensure layer control has proper z-index and positioning */
@@ -1654,12 +1683,22 @@
         width: 100%;
     }
 
+    .toolbar-toggle {
+        display: flex;
+    }
+
     .map-toolbar {
-        left: 10px;
-        right: 10px;
-        top: auto;
-        bottom: 100px;
-        width: auto;
+        left: 0;
+        top: 60px;
+        width: 280px;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+        transform: translateX(-100%);
+        border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+    }
+
+    .map-toolbar.open {
+        transform: translateX(0);
     }
 
     .toolbar-buttons {

@@ -18,6 +18,13 @@
     <!-- Main Map -->
     <div id="map"></div>
 
+    <!-- Toolbar Toggle Button (Mobile) -->
+    <button class="toolbar-toggle" id="toolbarToggle" aria-label="Toggle toolbar">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="currentColor">
+            <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+        </svg>
+    </button>
+
     <!-- Main Toolbar (Top Left) -->
     <div class="map-toolbar" id="mainToolbar">
         <!-- Location Tools Group -->
@@ -242,6 +249,25 @@
 <script src="{% static 'js/map.js' %}?v=7"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Toolbar toggle button (mobile)
+    const toolbarToggle = document.getElementById('toolbarToggle');
+    const mainToolbar = document.getElementById('mainToolbar');
+
+    if (toolbarToggle && mainToolbar) {
+        toolbarToggle.addEventListener('click', function() {
+            mainToolbar.classList.toggle('open');
+        });
+
+        // Close toolbar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768) {
+                if (!mainToolbar.contains(e.target) && !toolbarToggle.contains(e.target)) {
+                    mainToolbar.classList.remove('open');
+                }
+            }
+        });
+    }
+
     // Close sidebar button
     const closeSidebar = document.getElementById('closeSidebar');
     const sidebar = document.getElementById('filterSidebar');

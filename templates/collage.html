@@ -474,8 +474,15 @@
     }
 
     .stats-summary {
-        flex-direction: column;
-        align-items: center;
+        flex-direction: row;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+    }
+
+    .stat-item {
+        min-width: 100px;
+        flex: 0 1 auto;
     }
 
     .collage-grid {

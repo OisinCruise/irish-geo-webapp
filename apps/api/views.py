@@ -355,11 +355,13 @@ class ProvinceViewSet(viewsets.ReadOnlyModelViewSet):
 
         # Use raw SQL annotation for geometry simplification (PostGIS)
         # This reduces 13MB of province geometries to ~1-2MB
+        # CRITICAL: Wrap in ST_Multi to ensure result is always MultiPolygon (not Polygon)
+        # ST_SimplifyPreserveTopology can return Polygon for simple geometries, but model expects MultiPolygon
         # Also annotate county_count and site_count to avoid N+1 queries
         # Table name qualified to avoid ambiguous column reference when joins are present
         # CRITICAL: Add order_by to prevent UnorderedObjectListWarning when pagination is applied
         return Province.objects.filter(is_deleted=False).extra(
-            select={'geometry': 'ST_SimplifyPreserveTopology(province.geometry, 0.005)'}
+            select={'geometry': 'ST_Multi(ST_SimplifyPreserveTopology(province.geometry, 0.005))'}
         ).annotate(
             annotated_county_count=Count(
                 'counties',
@@ -414,10 +416,12 @@ class CountyViewSet(viewsets.ReadOnlyModelViewSet):
         """
         # Use raw SQL annotation for geometry simplification (PostGIS)
         # This reduces 28MB of county geometries to ~2-3MB
+        # CRITICAL: Wrap in ST_Multi to ensure result is always MultiPolygon (not Polygon)
+        # ST_SimplifyPreserveTopology can return Polygon for simple geometries, but model expects MultiPolygon
         # Table name qualified to avoid ambiguous column reference when province is joined via select_related
         # CRITICAL: Add order_by to prevent UnorderedObjectListWarning when pagination is applied
         return County.objects.filter(is_deleted=False).select_related('province').extra(
-            select={'geometry': 'ST_SimplifyPreserveTopology(county.geometry, 0.003)'}
+            select={'geometry': 'ST_Multi(ST_SimplifyPreserveTopology(county.geometry, 0.003))'}
         ).annotate(
             annotated_site_count=Count(
                 'historical_sites',
